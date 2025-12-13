@@ -1,0 +1,21 @@
+[default]
+
+GRANIAN.SERVER.PORT = 8000
+GRANIAN.SERVER.HOST = "0.0.0.0"
+GRANIAN.SERVER.WORKERS = 1
+GRANIAN.SERVER.RELOAD = true
+GRANIAN.SERVER.FACTORY = true
+GRANIAN.SERVER.TARGET_RUN = "app.core.app_factory:create_app"
+GRANIAN.SERVER.LOG_LEVEL = 'info'
+GRANIAN.SERVER.LOG_ACCESS = true
+
+#[default.logging]
+LOGGING.LEVEL = "INFO"
+LOGGING.FORMAT = "console" # LOG_FORMAT="json" или "console"
+#path = "logs/app.log"
+#rotation = "10 MB"
+#retention = "10 days"
+
+[development.logging]
+level = "DEBUG"
+format = "text"

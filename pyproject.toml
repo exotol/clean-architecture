@@ -1,0 +1,214 @@
+[project]
+name = "eva"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asgi-correlation-id>=4.3.4",
+    "dependency-injector>=4.48.3",
+    "dynaconf>=3.2.12",
+    "fastapi>=0.124.4",
+    "granian[reload]>=2.6.0",
+    "structlog>=25.5.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "pre-commit>=4.5.0",
+    "pytest>=9.0.2",
+    "ruff>=0.14.9",
+    "types-colorama>=0.4.15.20250801",
+]
+
+############### TOOLS #############################################
+############## RUFF ################################
+[tool.ruff]
+# Длина строки (как у Black)
+line-length = 79
+# Версия питона
+target-version = "py312"
+preview = true
+
+[tool.ruff.lint]
+select = [
+    "F", # Pyflakes (ошибки синтаксиса, неиспользуемые импорты)
+    "E", "W", # Pycodestyle (стиль кода)
+    "I", # Isort (сортировка импортов)
+    "N", # PEP8-naming (нейминг переменных/классов)
+    "UP", # Pyupgrade (требует современный синтаксис 3.12+)
+    "YTT", # flake8-2020 (ошибки совместимости версий)
+    "ANN", # Flake8-annotations (ТРЕБУЕТ типы везде, даже для self/cls)
+    "ASYNC", # Flake8-async (ошибки в async коде)
+    "S", # Bandit (поиск уязвимостей безопасности)
+    "BLE", # Flake8-blind-except (запрещает `except Exception:`)
+    "FBT", # Flake8-boolean-trap (запрещает функции foo(True, False))
+    "B", # Flake8-bugbear (поиск реальных багов и проблем логики)
+    "A", # Flake8-builtins (запрещает называть переменные id, list, str)
+    "C4", # Flake8-comprehensions (лучшие практики list/dict comprehension)
+    "DTZ", # Flake8-datetimez (ЗАПРЕЩАЕТ datetime.now() без таймзоны)
+    "T10", # Flake8-debugger (запрещает breakpoint() и pdb)
+    "EXE", # Flake8-executable (права доступа файлов)
+    "ICN", # Flake8-import-conventions (стандартные алиасы типа pd, np)
+    "G", # Flake8-logging-format (правильное логирование)
+    "PIE", # Flake8-pie (мелкие улучшения логики)
+    "T20", # Flake8-print (ЗАПРЕЩАЕТ print, требует logger)
+    "PT", # Flake8-pytest-style (правильный стиль тестов)
+    "Q", # Flake8-quotes (кавычки)
+    "RSE", # Flake8-raise (упрощение raise)
+    "RET", # Flake8-return (проверка логики return)
+    "SLF", # Flake8-self (запрет доступа к приватным полям _field снаружи)
+    "SIM", # Flake8-simplify (предлагает упростить if/else)
+    "TID", # Flake8-tidy-imports (запрет относительных импортов и др.)
+    "TCH", # Flake8-type-checking (перенос импортов только для типов в TYPE_CHECKING блок)
+    "ARG", # Flake8-unused-arguments (поиск неиспользуемых аргументов функций)
+    "PTH", # Flake8-use-pathlib (запрещает os.path, требует Pathlib)
+    "ERA", # Eradicate (ЗАПРЕЩАЕТ закомментированный код)
+    "PL", # Pylint (Мощный анализ: Convention, Error, Refactor, Warning)
+    "TRY", # Tryceratops (плохие практики в try/except)
+    "FLY", # Flynt (f-strings конвертация)
+    "PERF", # Perflint (антипаттерны производительности)
+    "FURB", # Refurb (модернизация кода)
+    "RUF", # Специфичные правила Ruff
+]
+
+# Добавляем PLR (Pylint Refactor) в список проверок (Магические константы)
+#extend-select = ["PLR"]
+
+# Игнорируем конфликты с форматтером и устаревшие правила
+ignore = [
+    "E501", # Длину строки проверяет ruff format, а не линтер
+    "ISC001", # Конфликт с форматтером
+    "ANN101", # Требование типа для self (deprecated)
+    "ANN102", # Требование типа для cls (deprecated)
+    "COM812", # Конфликт запятых с форматтером
+]
+
+# ------------------------------------------------------------------
+# Тонкая настройка исключений
+# ------------------------------------------------------------------
+[tool.ruff.lint.extend-per-file-ignores]
+# В тестах можно:
+# S101: использовать assert
+# PLR2004: использовать магические числа (assert result == 200)
+# ANN: не писать типы аргументов (иногда это лишнее в тестах)
+# SLF001: обращаться к приватным полям (для тестов это ок)
+"tests/*" = ["S101", "PLR2004", "ANN", "SLF001"]
+
+# В файле миграций (Alembic) можно не писать типы
+"alembic/*" = ["ANN"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Разрешаем некоторые функции как дефолтные аргументы (FastAPI Depends)
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body"
+]
+
+[tool.ruff.lint.isort]
+# Настройки импортов
+combine-as-imports = true
+known-first-party = ["app"] # локальный пакет
+
+[tool.ruff.lint.pylint]
+# Максимальное количество аргументов функции (по умолчанию 5)
+max-args = 6
+# Максимальное количество ветвлений (if/else)
+max-branches = 12
+
+
+[tool.ruff.format]
+# Использовать одинарные кавычки (опционально, Black любит двойные)
+quote-style = "double"
+
+################### MYPY ###################################
+[tool.mypy]
+# Указываем версию Python и где искать код
+python_version = "3.12"
+files = ["src"]
+
+# ---------------------------------------------------------
+# 1. Глобальная строгость (Включает большинство проверок)
+# ---------------------------------------------------------
+strict = true
+# Разрешаем нетипизированные декораторы
+disallow_untyped_decorators = false
+
+# ---------------------------------------------------------
+# 2. Требование аннотаций
+# ---------------------------------------------------------
+# Запрещает функции без аннотаций (def foo(x) -> None: error)
+disallow_untyped_defs = true
+# Запрещает неполные аннотации (def foo(x: int, y): error)
+disallow_incomplete_defs = true
+# Проверяет тело даже нетипизированных функций (на всякий случай)
+check_untyped_defs = true
+
+# ---------------------------------------------------------
+# 3. Работа с импортами и Any
+# ---------------------------------------------------------
+# Запрещает использовать Any, который прилетел из библиотеки без типов
+# Разрешаем передавать объекты из библиотек без типов иначе замучаемся
+disallow_any_unimported = false
+# Если Mypy не нашел типы для библиотеки — он упадет с ошибкой.
+# (По умолчанию в strict это True, но пишем явно)
+ignore_missing_imports = false
+
+# ---------------------------------------------------------
+# 4. Дополнительная строгость
+# ---------------------------------------------------------
+# Запрещает возвращать Any из функции, которая заявлена как typed
+warn_return_any = true
+# Запрещает использовать List, Dict без указания типов (List[int])
+disallow_any_generics = true
+# Запрещает "Optional" без явного указания (x: int = None -> Error)
+no_implicit_optional = true
+# Запрещает сравнение несовместимых типов (if 1 == "1": Error)
+strict_equality = true
+# Ругается, если вы поставили # type: ignore там, где ошибки нет
+warn_unused_ignores = true
+# Ругается, если вы делаете cast(int, x), а x и так int
+warn_redundant_casts = true
+
+# ---------------------------------------------------------
+# Плагины (Обязательно для FastAPI/Pydantic)
+# ---------------------------------------------------------
+plugins = [
+    "pydantic.mypy"
+]
+
+# Настройка плагина Pydantic для максимальной строгости
+[tool.pydantic-mypy]
+# Запрещает передавать лишние аргументы при создании модели.
+init_forbid_extra = true
+# Заставляет Mypy строго проверять типы аргументов, передаваемых в конструктор модели.
+init_typed = true
+# Предупреждает, если вы используете сложные (динамические) алиасы для обязательных полей
+warn_required_dynamic_aliases = true
+
+# Если у библиотеки нет типа (kafka-python, boto3 и т.д)
+# Пример: библиотека "dynaconf" не имеет типов, и мы это знаем
+[[tool.mypy.overrides]]
+module = [
+    "dynaconf.*",
+    "dependency_injector.*",
+    "app.core.containers"
+]
+# Разрешаем наследоваться от Any (DeclarativeContainer) только здесь
+disallow_subclassing_any = false
+# 1. Разрешаем Mypy не находить стабы типов
+ignore_missing_imports = true
+# 2. Разрешаем использовать Any, который прилетел из этой библиотеки
+disallow_any_unimported = false
+####################### MYPY #####################################3
+
+
+
+
+
+
+
+
