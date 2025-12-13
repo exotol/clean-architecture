@@ -83,6 +83,16 @@ ignore = [
     "ANN101", # Требование типа для self (deprecated)
     "ANN102", # Требование типа для cls (deprecated)
     "COM812", # Конфликт запятых с форматтером
+    "E111",    # Indentation is not a multiple of 4
+    "E114",    # Indentation comments
+    "E117",    # Over-indented
+    "D206",    # Docstring indentation
+    "D300",    # Triple quotes usage
+    "Q000",    # Quotes
+    "Q001",
+    "Q002",
+    "Q003",
+    "W191",    # Tab indentation
 ]
 
 # ------------------------------------------------------------------
