@@ -10,16 +10,18 @@ dependencies = [
     "dynaconf>=3.2.12",
     "fastapi>=0.124.4",
     "granian[reload]>=2.6.0",
-    "structlog>=25.5.0",
+    "loguru>=0.7.3",
 ]
 
 [dependency-groups]
 dev = [
+    "flake8-pyproject>=1.2.4",
     "mypy>=1.19.0",
     "pre-commit>=4.5.0",
     "pytest>=9.0.2",
     "ruff>=0.14.9",
     "types-colorama>=0.4.15.20250801",
+    "wemake-python-styleguide>=1.4.0",
 ]
 
 ############### TOOLS #############################################
@@ -205,6 +207,7 @@ warn_required_dynamic_aliases = true
 module = [
     "dynaconf.*",
     "dependency_injector.*",
+    "structlog.*",
     "app.core.containers"
 ]
 # Разрешаем наследоваться от Any (DeclarativeContainer) только здесь
@@ -213,11 +216,46 @@ disallow_subclassing_any = false
 ignore_missing_imports = true
 # 2. Разрешаем использовать Any, который прилетел из этой библиотеки
 disallow_any_unimported = false
-####################### MYPY #####################################3
+####################### MYPY #####################################
 
+##################### FLAKE8 / WEMAKE ########################
+[tool.flake8]
+# Максимальная длина строки (должна совпадать с Ruff)
+max-line-length = 78
 
+# Глубина вложенности и сложность (WPS очень строг к этому)
+max-complexity = 6
+max-line-complexity = 12
 
+# Исключаем папки
+exclude = [".git", "__pycache__", ".venv", ".eggs", "*.egg", "dist"]
 
+# -------------------------------------------------------------------------
+# СПИСОК ИГНОРИРОВАНИЯ (Самая важная часть)
+# -------------------------------------------------------------------------
+ignore = [
+    # --- Форматирование (Конфликты с Ruff Format / Black) ---
+    "W503",   # Line break before binary operator
+    "E203",   # Whitespace before ':'
+    "Q000",   # WPS требует одинарные кавычки (Ruff ставит двойные)
+    "C812",   # Missing trailing comma
+    "WPS305", # Запрет f-строк (WPS их не любит, но мы их любим)
+    "WPS306", # Found class without a base class (в Python 3 это не нужно)
+    "WPS326", # Found implicit string concatenation (Ruff сам это правит)
+    "WPS226", # Found string constant over-use (иногда мешает в тестах/конфигах)
+
+    # --- Документация (Если не пишете публичную библиотеку) ---
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+
+    # --- Излишняя строгость для FastAPI ---
+    "WPS404", # Found complex default value (FastAPI использует Depends(...))
+    "WPS430", # Found nested function (иногда нужно для декораторов)
+]
+
+# Настройки для плагинов внутри WPS
+[tool.flake8.plugins]
+# Разрешаем f-строки
+accept-encodings = "utf-8"
 
 
 

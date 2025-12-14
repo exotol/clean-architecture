@@ -67,3 +67,7 @@ mypy.check:
 install.pre-commit:
 	@echo "Установить сконфигрурированные пре-коммит хуки"
 	uv run --active pre-commit install
+
+wemake.run:
+	@echo "Запуск wemake"
+	uv run --active flake8 .

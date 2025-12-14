@@ -12,3 +12,12 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [ pydantic, fastapi ] # Укажите зависимости
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0  # Проверьте актуальную версию
+    hooks:
+      - id: flake8
+       # Нужно доустановить wps в окружение pre-commit
+        additional_dependencies: [
+            "wemake-python-styleguide",
+            "Flake8-pyproject"
+        ]
