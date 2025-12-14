@@ -9,13 +9,20 @@ GRANIAN.SERVER.TARGET_RUN = "app.core.app_factory:create_app"
 GRANIAN.SERVER.LOG_LEVEL = 'info'
 GRANIAN.SERVER.LOG_ACCESS = true
 
-#[default.logging]
-LOGGING.LEVEL = "INFO"
-LOGGING.FORMAT = "console" # LOG_FORMAT="json" или "console"
-#path = "logs/app.log"
-#rotation = "10 MB"
-#retention = "10 days"
 
-[development.logging]
-level = "DEBUG"
-format = "text"
+LOGGING.LEVEL = "INFO"
+#LOGGING.FORMAT = "{message}"
+LOGGING.FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>" # или "text" для локальной разработки
+LOGGING.PATH = "@none" #"logs/app.log"
+LOGGING.ROTATION = "10 MB"
+LOGGING.RETENTION = "10 days"
+LOGGING.LOGGERS_TO_ROOT = [
+    "uvicorn.asgi",
+    "uvicorn.access",
+    "fastapi",
+    "granian",
+    "_granian",
+    "granian.access",
+    "granian-worker",
+]
+

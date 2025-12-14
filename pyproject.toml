@@ -250,6 +250,8 @@ ignore = [
     # --- Излишняя строгость для FastAPI ---
     "WPS404", # Found complex default value (FastAPI использует Depends(...))
     "WPS430", # Found nested function (иногда нужно для декораторов)
+    "WPS400", # магические коды в комментария
+    "WPS602", # Found using @staticmethod
 ]
 
 # Настройки для плагинов внутри WPS

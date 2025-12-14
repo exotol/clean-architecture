@@ -1,24 +1,13 @@
 from dependency_injector import containers, providers
-from dynaconf import Dynaconf
 from granian import Granian
 from granian.constants import Interfaces
 
-from app.core.constants import PATH_TO_ENVS, PATH_TO_SECRETS, PATH_TO_SETTINGS
 from app.schemas.logger import LoggerConfig
 from app.schemas.server import ServerConfig
 
 
 class ConfigContainer(containers.DeclarativeContainer):
     config = providers.Configuration()
-    config.from_dict(
-        Dynaconf(
-            envvar_prefix=False,
-            settings_file=[PATH_TO_SETTINGS, PATH_TO_SECRETS, PATH_TO_ENVS],
-            environments=True,
-            load_dotenv=False,
-            merge_enabled=True,
-        ).as_dict()
-    )
 
     server_config = providers.Singleton(
         ServerConfig,
@@ -34,30 +23,33 @@ class ConfigContainer(containers.DeclarativeContainer):
 
     logger_config = providers.Singleton(
         LoggerConfig,
-        log_level=config.LOGGING.LEVEL,
-        log_format=config.LOGGING.FORMAT,
+        level=config.LOGGING.LEVEL,
+        format=config.LOGGING.FORMAT,
+        path=config.LOGGING.PATH,
+        rotation=config.LOGGING.ROTATION,
+        retention=config.LOGGING.RETENTION,
+        loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
     )
 
 
 class ServerContainer(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
-        packages=[
-            "__main__",
-        ]
+        packages=["__main__", "app"]
     )
     config_container = providers.Container(ConfigContainer)
 
     granian_server = providers.Singleton(
         Granian,
-        target=config_container.server_config.provided.target_run,  # Путь до вашего приложения (как строка)
-        address=config_container.server_config.provided.host,  # Настройки сети
+        target=config_container.server_config.provided.target_run,
+        address=config_container.server_config.provided.host,
         port=config_container.server_config.provided.port,
-        interface=Interfaces.ASGI,  # Явно указываем интерфейс (FastAPI - это ASGI)
-        workers=config_container.server_config.provided.workers,  # Количество воркеров (для dev лучше 1)
-        reload=config_container.server_config.provided.reload,  # Перезагрузка при изменении кода (для dev)
+        interface=Interfaces.ASGI,
+        workers=config_container.server_config.provided.workers,
+        reload=config_container.server_config.provided.reload,
         factory=config_container.server_config.provided.factory,
         log_level=config_container.server_config.provided.log_level,
         log_access=config_container.server_config.provided.log_access,
+        log_dictconfig={},
     )
 
 
