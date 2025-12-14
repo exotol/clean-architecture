@@ -20,8 +20,12 @@ def main(
     granian_server.serve()
 
 
-if __name__ == "__main__":
+def init_server_container() -> None:
     settings_dict = load_settings().as_dict()
     container = ServerContainer()
     container.config_container.config.from_dict(settings_dict)
+
+
+if __name__ == "__main__":
+    init_server_container()
     main()
