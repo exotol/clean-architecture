@@ -21,7 +21,7 @@ repos:
     hooks:
       - id: flake8
           # Передаем аргументы списком
-        args: [ "--select=WPS" ]
+        args: [ --select=WPS ]
        # Нужно доустановить wps в окружение pre-commit
         additional_dependencies: [
             "wemake-python-styleguide",
