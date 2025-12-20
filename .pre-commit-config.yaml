@@ -25,6 +25,7 @@ repos:
             "wemake-python-styleguide",
             "Flake8-pyproject"
         ]
+        args: [--known-enum-bases]
   - repo: https://github.com/terrencepreilly/darglint
     rev: v1.8.1  # Последняя стабильная версия
     hooks:
