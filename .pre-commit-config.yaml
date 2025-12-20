@@ -21,3 +21,10 @@ repos:
             "wemake-python-styleguide",
             "Flake8-pyproject"
         ]
+  - repo: https://github.com/terrencepreilly/darglint
+    rev: v1.8.1  # Последняя стабильная версия
+    hooks:
+      - id: darglint
+        # Опционально: если нужно передать аргументы прямо здесь,
+        # но лучше использовать конфиг-файл
+        # args: ["--docstring-style", "google"]

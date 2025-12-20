@@ -15,7 +15,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "darglint>=1.8.1",
     "flake8-pyproject>=1.2.4",
+    "isort>=7.0.0",
     "mypy>=1.19.0",
     "pre-commit>=4.5.0",
     "pytest>=9.0.2",
@@ -37,7 +39,7 @@ preview = true
 select = [
     "F", # Pyflakes (ошибки синтаксиса, неиспользуемые импорты)
     "E", "W", # Pycodestyle (стиль кода)
-    "I", # Isort (сортировка импортов)
+#    "I", # Isort (сортировка импортов) -> перехала в isort
     "N", # PEP8-naming (нейминг переменных/классов)
     "UP", # Pyupgrade (требует современный синтаксис 3.12+)
     "YTT", # flake8-2020 (ошибки совместимости версий)
@@ -95,6 +97,15 @@ ignore = [
     "Q002",
     "Q003",
     "W191",    # Tab indentation
+    "RUF003", # Запретить ругаться на комментарии
+    "N818", # Error вместо Exception под запретом
+]
+
+# Разрешаем кириллические буквы, похожие на латинские, чтобы Ruff не ругался
+allowed-confusables = [
+    "В", "А", "Е", "К", "М", "Н", "О",
+    "Р", "С", "Т", "У", "Х", "а", "е",
+    "о", "р", "с", "у", "х", "г"
 ]
 
 # ------------------------------------------------------------------
@@ -120,10 +131,19 @@ extend-immutable-calls = [
     "fastapi.Body"
 ]
 
-[tool.ruff.lint.isort]
-# Настройки импортов
-combine-as-imports = true
-known-first-party = ["app"] # локальный пакет
+#[tool.ruff.lint.isort]
+## Настройки импортов
+### Опционально: стиль объединения импортов (чтобы не было ошибок со скобками)
+## --- Обязательно для WPS ---
+#lines-after-imports = 2           # WPS306 требует ровно 2 пустые строки после блока импортов
+#combine-as-imports = false         # Объединять "from x import (a, b)"
+#
+## --- Отключить то, что вы включали ранее ---
+#force-single-line = true         # WPS не требует Java-стиля, он любит скобки
+#force-wrap-aliases = true        # Обычно false
+#
+## --- приложение ---
+#known-first-party = ["app"]
 
 [tool.ruff.lint.pylint]
 # Максимальное количество аргументов функции (по умолчанию 5)
@@ -135,6 +155,7 @@ max-branches = 12
 [tool.ruff.format]
 # Использовать одинарные кавычки (опционально, Black любит двойные)
 quote-style = "double"
+
 
 ################### MYPY ###################################
 [tool.mypy]
@@ -221,7 +242,7 @@ disallow_any_unimported = false
 ##################### FLAKE8 / WEMAKE ########################
 [tool.flake8]
 # Максимальная длина строки (должна совпадать с Ruff)
-max-line-length = 78
+max-line-length = 79
 
 # Глубина вложенности и сложность (WPS очень строг к этому)
 max-complexity = 6
@@ -252,12 +273,42 @@ ignore = [
     "WPS430", # Found nested function (иногда нужно для декораторов)
     "WPS400", # магические коды в комментария
     "WPS602", # Found using @staticmethod
+    "N818", # Error вместо Exception под запретом
+
 ]
 
 # Настройки для плагинов внутри WPS
 [tool.flake8.plugins]
 # Разрешаем f-строки
 accept-encodings = "utf-8"
+#[flake8]
+
+[tool.darglint.plugins]
+docstring_style = "google"
+
+################# DARGLINT ####################
+[tool.darglint]
+docstring_style = "google"
+
+################ ISORT ###############
+[tool.isort]
+# Явное указание профиля (если версия isort свежая)
+profile = "wemake"
+multi_line_output = 3          # Вертикальный список (Vertical Hanging Indent)
+include_trailing_comma = true  # Запятая в конце
+force_grid_wrap = 2            # <--- МАГИЯ ЗДЕСЬ.
+                               # 0 = авто (как в Ruff),
+                               # 2 = всегда сворачивать в скобки, если > 1 импорта
+#force_wrap_aliases = true
+combine_as_imports = true         # Объединять "from x import (a, b)"
+# --- Отключить то, что вы включали ранее ---
+force_single_line = true
+use_parentheses = true         # Использовать скобки (WPS это любит)
+ensure_newline_before_comments = true
+line_length = 79
+lines_after_imports = 2        # Для wemake
+known_first_party = ["app"]
+
 
 
 

@@ -60,6 +60,10 @@ ruff.check:
 	@echo "Запустить проверку RUFF качества кода"
 	uv run --active ruff check . --fix --unsafe-fixes
 
+ruff.format:
+	@echo "Запустить форматирование с помощью ruff"
+	uv run --active ruff format .
+
 mypy.check:
 	@echo "Запустить проверку MYPY типизации"
 	uv run --active mypy --install-types --non-interactive .
@@ -71,3 +75,24 @@ install.pre-commit:
 wemake.run:
 	@echo "Запуск wemake"
 	uv run --active flake8 .
+
+
+
+
+##########################
+
+start.infra:
+	@echo "Запустить инфраструктуру"
+	sudo docker compose --file docker/docker-compose.yml up
+
+check.opensearch:
+	@echo "Проверить доступность опенсерча с дефолтным паролем"
+	# Флаг -k (insecure) нужен, так как сертификаты самоподписанные
+	curl -X GET https://localhost:9200 -u 'admin:myStrongPassword123!' -k
+
+block.off.index:
+	@echo "Убрать блокировку индекса на запись"
+	curl -X PUT "https://localhost:9200/_all/_settings" \
+		-u 'admin:myStrongPassword123!' -k \
+		-H 'Content-Type: application/json' \
+		-d'{"index.blocks.read_only_allow_delete": null}'
