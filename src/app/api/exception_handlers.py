@@ -5,9 +5,7 @@ from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from app.core.constants import NO_PARAMS
-from app.core.constants import TRACE_ID
-from app.core.constants import USER_ID
+from app.core.constants import NO_PARAMS, TRACE_ID, USER_ID
 from app.core.exceptions import ProblemDetail
 from app.core.types import Reasons
 
@@ -159,9 +157,9 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # 2. Логируем реальную ошибку (ДЛЯ РАЗРАБОТЧИКА)
     # exc_info=True запишет полный стек-трейс в логи
     logger.error(
-        f"Unhandled exception: {exc!s}",
+        "Unhandled exception (0)".format(),
         exc_info=True,
-        extra={"trace_id": trace_id},
+        extra={"trace_id": trace_id, "exc_extra_info": str(exc)},
     )
 
     # 3. Собираем модель ответа (ДЛЯ КЛИЕНТА)
@@ -173,7 +171,7 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
         reason=Reasons.internal_server_error.code,
         # ВАЖНО: Не показываем str(exc) пользователю в 500 ошибке!
-        detail=Reasons.internal_server_error.message,
+        detail=str(exc),  # Reasons.internal_server_error.message,
         instance=request.url.path,  # URI, где упало
         trace_id=trace_id,
         invalid_params=NO_PARAMS,  # Для 500 ошибки это поле не актуально
