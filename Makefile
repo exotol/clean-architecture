@@ -74,7 +74,7 @@ install.pre-commit:
 
 wemake.run:
 	@echo "Запуск wemake"
-	uv run --active flake8 .
+	uv run --active flake8 . --select=WPS
 
 
 

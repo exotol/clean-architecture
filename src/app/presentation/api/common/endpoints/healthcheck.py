@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 from fastapi import APIRouter
 
-from app.schemas.endpoints.healthcheck import Healthcheck
+from app.presentation.api.schemas.healthcheck import Healthcheck
 
 router = APIRouter()
 

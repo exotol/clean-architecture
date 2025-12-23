@@ -11,16 +11,21 @@ dependencies = [
     "fastapi>=0.124.4",
     "granian[reload]>=2.6.0",
     "loguru>=0.7.3",
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
+    "opentelemetry-instrumentation-fastapi>=0.45.0",
 ]
 
 [dependency-groups]
 dev = [
     "darglint>=1.8.1",
     "flake8-pyproject>=1.2.4",
+    "httpx>=0.28.1",
     "isort>=7.0.0",
     "mypy>=1.19.0",
     "pre-commit>=4.5.0",
     "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
     "ruff>=0.14.9",
     "types-colorama>=0.4.15.20250801",
     "wemake-python-styleguide>=1.4.0",
@@ -39,7 +44,7 @@ preview = true
 select = [
     "F", # Pyflakes (ошибки синтаксиса, неиспользуемые импорты)
     "E", "W", # Pycodestyle (стиль кода)
-#    "I", # Isort (сортировка импортов) -> перехала в isort
+    "I", # Isort (сортировка импортов)
     "N", # PEP8-naming (нейминг переменных/классов)
     "UP", # Pyupgrade (требует современный синтаксис 3.12+)
     "YTT", # flake8-2020 (ошибки совместимости версий)
@@ -75,8 +80,10 @@ select = [
     "PERF", # Perflint (антипаттерны производительности)
     "FURB", # Refurb (модернизация кода)
     "RUF", # Специфичные правила Ruff
+    "PERF401",
 ]
 
+#external = ["WPS"]
 # Добавляем PLR (Pylint Refactor) в список проверок (Магические константы)
 #extend-select = ["PLR"]
 
@@ -99,6 +106,8 @@ ignore = [
     "W191",    # Tab indentation
     "RUF003", # Запретить ругаться на комментарии
     "N818", # Error вместо Exception под запретом
+    "RUF100", # Отключаем правило RUF100 (Unused noqa directive)
+#    "UP047" # Disable PEP 695 generics (not supported by current MyPy setup)
 ]
 
 # Разрешаем кириллические буквы, похожие на латинские, чтобы Ruff не ругался
@@ -121,6 +130,10 @@ allowed-confusables = [
 
 # В файле миграций (Alembic) можно не писать типы
 "alembic/*" = ["ANN"]
+
+# Decorators need to catch all exceptions and use f-strings for logging
+"src/app/core/decorators.py" = ["BLE001", "G004", "ANN401", "B008", "PLC0415"]
+"src/app/infrastructure/observability/monitor.py" = ["BLE001", "G004", "ANN401", "B008", "PLC0415", "PLE1205"]
 
 [tool.ruff.lint.flake8-bugbear]
 # Разрешаем некоторые функции как дефолтные аргументы (FastAPI Depends)
@@ -147,7 +160,7 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.pylint]
 # Максимальное количество аргументов функции (по умолчанию 5)
-max-args = 6
+max-args = 8
 # Максимальное количество ветвлений (if/else)
 max-branches = 12
 
@@ -237,6 +250,11 @@ disallow_subclassing_any = false
 ignore_missing_imports = true
 # 2. Разрешаем использовать Any, который прилетел из этой библиотеки
 disallow_any_unimported = false
+
+# Decorators module has complex typing with dependency injection
+[[tool.mypy.overrides]]
+module = ["app.core.decorators"]
+disallow_untyped_decorators = false
 ####################### MYPY #####################################
 
 ##################### FLAKE8 / WEMAKE ########################
@@ -247,6 +265,14 @@ max-line-length = 79
 # Глубина вложенности и сложность (WPS очень строг к этому)
 max-complexity = 6
 max-line-complexity = 12
+max-arguments = 8
+#known-enum-bases = "Events,StrEnum"
+# Игнорирование по файлам
+#per-file-ignores = [
+#    # Формат: "путь_к_файлу:коды_ошибок"
+#    "src/app/core/types.py:WPS115",
+#    "**/types.py: WPS115"
+#]
 
 # Исключаем папки
 exclude = [".git", "__pycache__", ".venv", ".eggs", "*.egg", "dist"]
@@ -274,7 +300,15 @@ ignore = [
     "WPS400", # магические коды в комментария
     "WPS602", # Found using @staticmethod
     "N818", # Error вместо Exception под запретом
-
+    "WPS115",
+    "WPS110", # Wrong variable name (result, value, etc)
+    "WPS111", # Short variable name (e, k, v)
+    "WPS229", # Too long try body length
+]
+per-file-ignores = [
+    "src/app/core/types.py: WPS115",
+    "**/types.py: WPS115",
+    "src/app/infrastructure/observability/monitor.py: WPS201, WPS433, WPS221"
 ]
 
 # Настройки для плагинов внутри WPS
@@ -290,26 +324,12 @@ docstring_style = "google"
 [tool.darglint]
 docstring_style = "google"
 
-################ ISORT ###############
-[tool.isort]
-# Явное указание профиля (если версия isort свежая)
-profile = "wemake"
-multi_line_output = 3          # Вертикальный список (Vertical Hanging Indent)
-include_trailing_comma = true  # Запятая в конце
-force_grid_wrap = 2            # <--- МАГИЯ ЗДЕСЬ.
-                               # 0 = авто (как в Ruff),
-                               # 2 = всегда сворачивать в скобки, если > 1 импорта
-#force_wrap_aliases = true
-combine_as_imports = true         # Объединять "from x import (a, b)"
-# --- Отключить то, что вы включали ранее ---
-force_single_line = true
-use_parentheses = true         # Использовать скобки (WPS это любит)
-ensure_newline_before_comments = true
-line_length = 79
-lines_after_imports = 2        # Для wemake
-known_first_party = ["app"]
 
 
 
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 

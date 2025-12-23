@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.api.common.api import common_endpoints
-from app.api.v1.api import config_routers_endpoints_v1
+from app.presentation.api.common.api import common_endpoints
+from app.presentation.api.v1.api import config_routers_endpoints_v1
 
 
 def add_common_endpoints(router: APIRouter) -> None:

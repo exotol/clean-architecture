@@ -6,8 +6,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.core.constants import NO_PARAMS, TRACE_ID, USER_ID
-from app.core.exceptions import ProblemDetail
-from app.core.types import Reasons
+from app.core.exceptions import ProblemDetail, Reasons
 
 
 def business_exception_handler(

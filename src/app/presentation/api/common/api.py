@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.common.endpoints import healthcheck, root
+from app.presentation.api.common.endpoints import healthcheck, root
 
 
 def common_endpoints() -> APIRouter:

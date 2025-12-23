@@ -12,7 +12,7 @@ GRANIAN.SERVER.LOG_ACCESS = true
 
 LOGGING.LEVEL = "INFO"
 #LOGGING.FORMAT = "{message}"
-LOGGING.FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>" # или "text" для локальной разработки
+LOGGING.FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level> - <cyan>{extra}</cyan>" # или "text" для локальной разработки
 LOGGING.PATH = "@none" #"logs/app.log"
 LOGGING.ROTATION = "10 MB"
 LOGGING.RETENTION = "10 days"

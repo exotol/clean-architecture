@@ -1,10 +1,9 @@
 from dependency_injector.wiring import Provide, inject
 from granian.server import MPServer, MTServer
 
-from app.core.config import load_settings
 from app.core.containers import ServerContainer
-from app.core.logging import setup_logging
-from app.schemas.logger import LoggerConfig
+from app.infrastructure.observability.logging import setup_logging
+from app.utils.configs import LoggerConfig, load_settings
 
 
 @inject
@@ -13,7 +12,7 @@ def main(
         ServerContainer.granian_server
     ],
     logger_config: LoggerConfig = Provide[
-        ServerContainer.config_container.logger_config
+        ServerContainer.infra_container.logger_config
     ],
 ) -> None:
     setup_logging(logger_config=logger_config)
@@ -23,7 +22,7 @@ def main(
 def init_server_container() -> None:
     settings_dict = load_settings().as_dict()
     container = ServerContainer()
-    container.config_container.config.from_dict(settings_dict)
+    container.infra_container.config.from_dict(settings_dict)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+from loguru import logger
+
+from app.domain.entities.document import Document
+from app.domain.interfaces.search_repository import ISearchRepository
+from app.infrastructure.observability.monitor import monitor
+
+
+class SearchService:
+    def __init__(self, repository: ISearchRepository) -> None:
+        self._repository = repository
+
+    @monitor(
+        event_name="SEARCH_SERVICE", use_log_args=True, use_log_result=True
+    )
+    async def search(self, query: str) -> list[Document]:
+        logger.info(query)
+        return await self._repository.search(query=query)

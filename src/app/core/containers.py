@@ -1,12 +1,19 @@
-from dependency_injector import containers, providers
+from dependency_injector import (
+    containers,
+    providers,
+)
 from granian import Granian
 from granian.constants import Interfaces
 
-from app.schemas.logger import LoggerConfig
-from app.schemas.server import ServerConfig
+from app.application.services.search_service import SearchService
+from app.infrastructure.persistence.repositories.search_repository import (
+    SearchRepository,
+)
+from app.infrastructure.services.metrics_service import MetricsService
+from app.utils.configs import LoggerConfig, ServerConfig
 
 
-class ConfigContainer(containers.DeclarativeContainer):
+class InfrastructureContainer(containers.DeclarativeContainer):
     config = providers.Configuration()
 
     server_config = providers.Singleton(
@@ -31,28 +38,37 @@ class ConfigContainer(containers.DeclarativeContainer):
         loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
     )
 
+    metrics_service = providers.Singleton(MetricsService)
+
 
 class ServerContainer(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         packages=["__main__", "app"]
     )
-    config_container = providers.Container(ConfigContainer)
+    infra_container = providers.Container(InfrastructureContainer)
 
     granian_server = providers.Singleton(
         Granian,
-        target=config_container.server_config.provided.target_run,
-        address=config_container.server_config.provided.host,
-        port=config_container.server_config.provided.port,
+        target=infra_container.server_config.provided.target_run,
+        address=infra_container.server_config.provided.host,
+        port=infra_container.server_config.provided.port,
         interface=Interfaces.ASGI,
-        workers=config_container.server_config.provided.workers,
-        reload=config_container.server_config.provided.reload,
-        factory=config_container.server_config.provided.factory,
-        log_level=config_container.server_config.provided.log_level,
-        log_access=config_container.server_config.provided.log_access,
+        workers=infra_container.server_config.provided.workers,
+        reload=infra_container.server_config.provided.reload,
+        factory=infra_container.server_config.provided.factory,
+        log_level=infra_container.server_config.provided.log_level,
+        log_access=infra_container.server_config.provided.log_access,
         log_dictconfig={},
     )
 
 
 class AppContainer(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["app"])
-    config_container = providers.Container(ConfigContainer)
+    infra_container = providers.Container(InfrastructureContainer)
+
+    search_repository = providers.Singleton(SearchRepository)
+
+    search_service = providers.Singleton(
+        SearchService,
+        repository=search_repository,
+    )

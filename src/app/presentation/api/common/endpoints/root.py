@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.constants import HELLO_WORLD
-from app.schemas.endpoints.root import HelloWorld
+from app.presentation.api.schemas.root import HelloWorld
 
 router = APIRouter()
 

@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dependency_injector.wiring import Provide, inject
 from loguru import logger
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
 
 from app.core.containers import AppContainer
 
 if TYPE_CHECKING:
     from types import FrameType
 
-    from app.schemas.logger import LoggerConfig
+    from app.utils.configs import LoggerConfig
 
 
 class InterceptHandler(logging.Handler):
@@ -46,14 +48,37 @@ class InterceptHandler(logging.Handler):
         )
 
 
+def record_patcher(record: dict[str, Any]) -> None:
+    """
+    Патчер для Loguru, который добавляет trace_id и span_id из OpenTelemetry.
+
+    Args:
+        record: Словарь с записью лога.
+    """
+    span = trace.get_current_span()
+    if not span:
+        return
+
+    span_context = span.get_span_context()
+    if span_context.is_valid:
+        record["extra"]["trace_id"] = format(span_context.trace_id, "032x")
+        record["extra"]["span_id"] = format(span_context.span_id, "016x")
+
+
 @inject
 def setup_logging(
     logger_config: LoggerConfig = Provide[
-        AppContainer.config_container.logger_config
+        AppContainer.infra_container.logger_config
     ],
 ) -> None:
+    # 0. Настраиваем OpenTelemetry (чтобы были TraceID)
+    trace.set_tracer_provider(TracerProvider())
+
     # 1. Удаляем дефолтный обработчик Loguru
     logger.remove()
+
+    # 2. Добавляем патчер для trace_id
+    logger.configure(patcher=record_patcher)
 
     # 3. Добавляем вывод в консоль (stdout)
     logger.add(
