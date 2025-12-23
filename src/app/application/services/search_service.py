@@ -2,6 +2,7 @@ from loguru import logger
 
 from app.domain.entities.document import Document
 from app.domain.interfaces.search_repository import ISearchRepository
+from app.infrastructure.observability.events import Events
 from app.infrastructure.observability.monitor import monitor
 
 
@@ -10,7 +11,9 @@ class SearchService:
         self._repository = repository
 
     @monitor(
-        event_name="SEARCH_SERVICE", use_log_args=True, use_log_result=True
+        event_name=Events.SEARCH_SERVICE,
+        use_log_args=True,
+        use_log_result=True,
     )
     async def search(self, query: str) -> list[Document]:
         logger.info(query)

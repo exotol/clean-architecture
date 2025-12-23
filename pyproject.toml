@@ -107,7 +107,6 @@ ignore = [
     "RUF003", # Запретить ругаться на комментарии
     "N818", # Error вместо Exception под запретом
     "RUF100", # Отключаем правило RUF100 (Unused noqa directive)
-#    "UP047" # Disable PEP 695 generics (not supported by current MyPy setup)
 ]
 
 # Разрешаем кириллические буквы, похожие на латинские, чтобы Ruff не ругался

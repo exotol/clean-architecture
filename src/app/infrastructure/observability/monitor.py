@@ -4,6 +4,7 @@ import dataclasses
 import functools
 import inspect
 import json
+from collections.abc import Callable, Coroutine
 from time import perf_counter
 from typing import (
     TYPE_CHECKING,
@@ -20,10 +21,9 @@ from pydantic import BaseModel
 from app.core.exceptions import BusinessException, InfrastructureException
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
-
     from loguru import Logger
 
+    from app.infrastructure.observability.events import Events
     from app.infrastructure.services.metrics_service import MetricsService
 
 
@@ -43,7 +43,7 @@ class _MonitoringHandler:
     def __init__(
         self,
         func: Callable[..., Any],
-        event_name: str,
+        event_name: Events | str,
         *,
         reraise: bool = True,
         action_when_exception: Callable[[Exception], Any] | None = None,
@@ -211,7 +211,7 @@ def _serialize_fallback(obj: Any) -> Any:
         return str(obj)
 
 
-def _async_wrapper(
+def _async_wrapper(  # noqa: UP047
     func: Callable[P, Coroutine[Any, Any, R]],
     handler: _MonitoringHandler,
 ) -> Callable[P, Coroutine[Any, Any, R]]:
@@ -237,7 +237,7 @@ def _async_wrapper(
     return wrapper
 
 
-def _sync_wrapper(
+def _sync_wrapper(  # noqa: UP047
     func: Callable[P, R],
     handler: _MonitoringHandler,
 ) -> Callable[P, R]:
@@ -264,7 +264,7 @@ def _sync_wrapper(
 
 
 def monitor(
-    event_name: str,
+    event_name: Events | str,
     *,
     reraise: bool = True,
     action_when_exception: Callable[[Exception], Any] | None = None,
@@ -310,7 +310,6 @@ def monitor(
         )
 
     return cast(
-        "Callable[[Callable[P, R] | "
-        "Callable[P, Coroutine[Any, Any, R]]], Any]",
+        Callable[[Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]], Any],
         decorator,
     )
