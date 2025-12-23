@@ -4,7 +4,6 @@ import dataclasses
 import functools
 import inspect
 import json
-from collections.abc import Callable, Coroutine
 from time import perf_counter
 from typing import (
     TYPE_CHECKING,
@@ -21,11 +20,13 @@ from pydantic import BaseModel
 from app.core.exceptions import BusinessException, InfrastructureException
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+
     from loguru import Logger
 
-    from app.infrastructure.observability.events import Events
     from app.infrastructure.services.metrics_service import MetricsService
 
+from app.infrastructure.observability.events import Events  # noqa: TC001
 
 # --- Typing ---
 P = ParamSpec("P")
@@ -51,7 +52,13 @@ class _MonitoringHandler:
         use_log_result: bool = False,
     ) -> None:
         self.func = func
-        self.event_name = event_name
+        if isinstance(event_name, Events):
+            self.event_name = event_name.value.code
+            self.event_description: str | None = event_name.value.description
+        else:
+            self.event_name = event_name
+            self.event_description = None
+
         self.reraise = reraise
         self.action_when_exception = action_when_exception
         self.use_log_args = use_log_args
@@ -92,6 +99,8 @@ class _MonitoringHandler:
             Logger with bound context.
         """
         context: dict[str, object] = {"event": self.event_name}
+        if self.event_description:
+            context["event_description"] = self.event_description
 
         if self.use_log_args:
             try:
@@ -310,6 +319,7 @@ def monitor(
         )
 
     return cast(
-        Callable[[Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]], Any],
+        "Callable[[Callable[P, R] | "
+        "Callable[P, Coroutine[Any, Any, R]]], Any]",
         decorator,
     )

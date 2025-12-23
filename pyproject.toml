@@ -307,7 +307,7 @@ ignore = [
 per-file-ignores = [
     "src/app/core/types.py: WPS115",
     "**/types.py: WPS115",
-    "src/app/infrastructure/observability/monitor.py: WPS201, WPS433, WPS221"
+    "src/app/infrastructure/observability/monitor.py: WPS201, WPS433, WPS221, WPS230"
 ]
 
 # Настройки для плагинов внутри WPS
