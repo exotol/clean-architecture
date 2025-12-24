@@ -105,19 +105,30 @@ class _MonitoringHandler:
         if self.use_log_args:
             try:
                 signature = inspect.signature(self.func)
-                first_param = next(iter(signature.parameters), None)
-                if first_param and first_param in {"self", "cls"} and args:
-                    context["args"] = [
-                        _serialize_payload(arg) for arg in args[1:]
-                    ]
-                else:
-                    context["args"] = [_serialize_payload(arg) for arg in args]
+                bound = signature.bind(*args, **kwargs)
+                bound.apply_defaults()
 
+                func_args = {}
+                func_kwargs = {}
+
+                for name, value in bound.arguments.items():
+                    if name in {"self", "cls"}:
+                        continue
+
+                    param = signature.parameters[name]
+                    if param.kind == inspect.Parameter.VAR_KEYWORD:
+                        func_kwargs.update(value)
+                    else:
+                        func_args[name] = value
+
+                context["args"] = _serialize_payload(func_args)
+                context["kwargs"] = _serialize_payload(func_kwargs)
+            except Exception:
+                context["args_error"] = "Serialization failed"
+                context["args"] = [_serialize_payload(arg) for arg in args]
                 context["kwargs"] = {
                     key: _serialize_payload(val) for key, val in kwargs.items()
                 }
-            except Exception:
-                context["args_error"] = "Serialization failed"
 
         return logger.bind(**context)
 
