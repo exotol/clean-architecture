@@ -61,59 +61,66 @@ An implementation of Clean Architecture principles. Feel free to use it!
 
 
 
-Schema & Entity Separation
+## Архитектура проекта
+
+Проект построен на принципах **Clean Architecture** (Чистая Архитектура), что обеспечивает разделение ответственности, тестируемость и независимость от фреймворков.
+
+### Слои (Layers)
+
+#### 1. Domain (`src/app/domain`)
+Ядро бизнес-логики. Не зависит ни от каких внешних библиотек или фреймворков.
+*   **entities/**: Бизнес-сущности (чистые классы или dataclasses).
+*   **interfaces/**: Интерфейсы (протоколы/ABC) для репозиториев и внешних сервисов.
+
+#### 2. Application (`src/app/application`)
+Слой сценариев использования (Use Cases). Оркестрирует бизнес-логику.
+*   **services/**: Сервисы приложения, реализующие конкретные бизнес-сценарии.
+*   *Зависит только от Domain.*
+
+#### 3. Infrastructure (`src/app/infrastructure`)
+Реализация интерфейсов и работа с внешним миром.
+*   **persistence/**: Работа с БД (репозитории, ORM модели).
+*   **observability/**: Логирование, мониторинг, трейсинг (Events, Monitor).
+*   **services/**: Инфраструктурные сервисы (метрики, клиенты API).
+*   *Зависит от Domain и Application.*
+
+#### 4. Presentation (`src/app/presentation`)
+Точка входа в приложение (API).
+*   **api/v1/endpoints/**: Обработчики HTTP-запросов (FastAPI).
+*   **api/schemas/**: Pydantic-схемы для валидации запросов и ответов.
+*   *Зависит от Application.*
+
+#### 5. Core & Utils (`src/app/core`, `src/app/utils`)
+Общие компоненты.
+*   **core/**: DI-контейнеры, исключения, константы, декораторы.
+*   **utils/**: Загрузка конфигурации.
+
+### Структура проекта
+
+```text
 src/app/
-├── domain/                    # BUSINESS CORE (no framework deps)
-│   ├── entities/              # Business objects with behavior
-│   │   └── search_result.py   # class SearchResult (business logic)
-│   └── interfaces/            # Ports (ABCs for repositories/gateways)
-│       └── search_repository.py  # class ISearchRepository(ABC)
+├── domain/                    # Business Core (No Deps)
+│   ├── entities/              # Business Objects
+│   └── interfaces/            # Interfaces (Ports)
 │
-├── application/               # USE CASES
-│   ├── services/              # Application services (orchestration)
-│   │   └── search_service.py
-│   └── dto/                   # Internal transfer objects
-│       └── search_dto.py      # Between layers, not API-specific
+├── application/               # Use Cases
+│   └── services/              # Application Services
 │
-├── infrastructure/            # EXTERNAL CONCERNS
-│   ├── persistence/           # Database
-│   │   ├── models/            # ORM models (SQLAlchemy)
-│   │   │   └── search_model.py  # class SearchORM(Base)
-│   │   └── repositories/      # Concrete repository implementations
-│   │       └── search_repository.py
-│   ├── gateways/              # External API clients
-│   └── services/              # Infrastructure services
-│       └── metrics.py         # MetricsService
+├── infrastructure/            # Implementation Details
+│   ├── persistence/           # Database & Repositories
+│   ├── observability/         # Logging, Tracing, Events
+│   └── services/              # Infrastructure Services
 │
-├── presentation/              # ENTRY POINTS
+├── presentation/              # API & Entry Points
 │   └── api/
-│       ├── v1/
-│       │   └── endpoints/
-│       │       └── search.py
-│       └── schemas/           # API Request/Response schemas
-│           └── search.py      # SearchRequest, SearchResponse (Pydantic)
+│       ├── v1/endpoints/      # Route Handlers
+│       └── schemas/           # Pydantic Models (DTOs)
 │
-└── core/                      # SHARED UTILITIES
-    ├── config.py
-    ├── containers.py
-    ├── decorators.py
-    ├── exceptions.py
-    └── protocols.py           # NEW: Protocol definitions for typing
-
-Layer Responsibilities
-Layer	                            Contains	        BaseModel Location
-presentation/api/schemas/	        API DTOs	        SearchRequest, SearchResponse
-application/dto/	                Internal DTOs	    Service-to-service transfer
-domain/entities/	                Business entities	Plain classes or dataclasses
-infrastructure/persistence/models/	DB models	        SQLAlchemy ORM
-
-Test Reorganization
-tests/
-├── unit/              # Isolated, fast, mock dependencies
-│   ├── domain/
-│   └── application/
-├── integration/       # Real DB, real dependencies
-│   └── infrastructure/
-├── e2e/               # Full API tests
-│   └── api/
-└── conftest.py
+├── core/                      # Shared Kernel
+│   ├── containers.py          # Dependency Injection
+│   ├── exceptions.py          # Custom Exceptions
+│   └── constants.py           # Global Constants
+│
+└── utils/                     # Utilities
+    └── configs.py             # Configuration Management
+```
