@@ -8,4 +8,4 @@ class Event(NamedTuple):
 
 
 class Events(Enum):
-    SEARCH_SERVICE = Event("SEARCH_SRV", "Search service execution")
+    SEARCH_SERVICE = Event("SEARCH_SERVICE", "Search service execution")

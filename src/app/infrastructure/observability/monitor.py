@@ -104,7 +104,15 @@ class _MonitoringHandler:
 
         if self.use_log_args:
             try:
-                context["args"] = [_serialize_payload(arg) for arg in args]
+                signature = inspect.signature(self.func)
+                first_param = next(iter(signature.parameters), None)
+                if first_param and first_param in {"self", "cls"} and args:
+                    context["args"] = [
+                        _serialize_payload(arg) for arg in args[1:]
+                    ]
+                else:
+                    context["args"] = [_serialize_payload(arg) for arg in args]
+
                 context["kwargs"] = {
                     key: _serialize_payload(val) for key, val in kwargs.items()
                 }
