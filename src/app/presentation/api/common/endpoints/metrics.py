@@ -10,6 +10,9 @@ router = APIRouter()
 def get_metrics() -> Response:
     """
     Expose Prometheus metrics.
+
+    Returns:
+        Response with Prometheus metrics in text format.
     """
     return Response(
         content=generate_latest(),

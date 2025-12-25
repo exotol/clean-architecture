@@ -8,7 +8,7 @@ from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
 from app.infrastructure.services.metrics_service import MetricsService
-from app.utils.configs import LoggerConfig
+from app.utils.configs import LoggerConfig, MetricsConfig
 from app.utils.configs import ServerConfig
 
 
@@ -35,6 +35,12 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         rotation=config.LOGGING.ROTATION,
         retention=config.LOGGING.RETENTION,
         loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
+    )
+
+    metrics_config = providers.Singleton(
+        MetricsConfig,
+        duration_buckets=config.METRICS.DURATION.BUCKETS,
+        service_name=config.METRICS.SERVICE_NAME
     )
 
     metrics_service = providers.Singleton(MetricsService)

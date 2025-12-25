@@ -38,6 +38,11 @@ class LoggerConfig(BaseModel):
     loggers_to_root: list[str]
 
 
+class MetricsConfig(BaseModel):
+    duration_buckets: list[float]
+    service_name: str
+
+
 class ServerConfig(BaseModel):
     host: str
     port: int
