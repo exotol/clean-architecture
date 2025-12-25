@@ -100,3 +100,8 @@ block.off.index:
 		-u 'admin:myStrongPassword123!' -k \
 		-H 'Content-Type: application/json' \
 		-d'{"index.blocks.read_only_allow_delete": null}'
+
+
+run.pytest:
+	@echo "Запуск pytest"
+	pytest tests
