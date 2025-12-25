@@ -1,9 +1,12 @@
-from dependency_injector.wiring import Provide, inject
-from granian.server import MPServer, MTServer
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
+from granian.server import MPServer
+from granian.server import MTServer
 
 from app.core.containers import ServerContainer
 from app.infrastructure.observability.logging import setup_logging
-from app.utils.configs import LoggerConfig, load_settings
+from app.utils.configs import LoggerConfig
+from app.utils.configs import load_settings
 
 
 @inject

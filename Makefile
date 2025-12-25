@@ -72,6 +72,10 @@ install.pre-commit:
 	@echo "Установить сконфигрурированные пре-коммит хуки"
 	uv run --active pre-commit install
 
+remove.pre-commit:
+	@echo "Удалить сконфигрурированные пре-коммит хуки"
+	uv run --active pre-commit uninstall
+
 wemake.run:
 	@echo "Запуск wemake"
 	uv run --active flake8 . --select=WPS

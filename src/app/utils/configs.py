@@ -3,7 +3,9 @@ from enum import StrEnum
 from dynaconf import Dynaconf
 from pydantic import BaseModel
 
-from app.core.constants import PATH_TO_ENVS, PATH_TO_SECRETS, PATH_TO_SETTINGS
+from app.core.constants import PATH_TO_ENVS
+from app.core.constants import PATH_TO_SECRETS
+from app.core.constants import PATH_TO_SETTINGS
 
 
 def load_settings() -> Dynaconf:

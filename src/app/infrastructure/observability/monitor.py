@@ -5,28 +5,29 @@ import functools
 import inspect
 import json
 from time import perf_counter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ParamSpec,
-    TypeVar,
-    cast,
-)
+from typing import Any
+from typing import ParamSpec
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import cast
 
 from loguru import logger
 from opentelemetry import trace
 from pydantic import BaseModel
 
-from app.core.exceptions import BusinessException, InfrastructureException
+from app.core.exceptions import BusinessException
+from app.core.exceptions import InfrastructureException
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
+    from collections.abc import Callable
+    from collections.abc import Coroutine
 
     from loguru import Logger
 
     from app.infrastructure.services.metrics_service import MetricsService
 
 from app.infrastructure.observability.events import Events  # noqa: TC001
+
 
 # --- Typing ---
 P = ParamSpec("P")

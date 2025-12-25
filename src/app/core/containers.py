@@ -1,7 +1,5 @@
-from dependency_injector import (
-    containers,
-    providers,
-)
+from dependency_injector import containers
+from dependency_injector import providers
 from granian import Granian
 from granian.constants import Interfaces
 
@@ -10,7 +8,8 @@ from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
 from app.infrastructure.services.metrics_service import MetricsService
-from app.utils.configs import LoggerConfig, ServerConfig
+from app.utils.configs import LoggerConfig
+from app.utils.configs import ServerConfig
 
 
 class InfrastructureContainer(containers.DeclarativeContainer):

@@ -16,7 +16,7 @@ An implementation of Clean Architecture principles. Feel free to use it!
 
     Output paths to refresh: $FilePath$
 
-    Working directory: $ProjectFileDir$
+    Working directory:ы $ProjectFileDir$
 
     Advanced Options:
 

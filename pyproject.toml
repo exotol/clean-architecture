@@ -133,6 +133,7 @@ allowed-confusables = [
 # Decorators need to catch all exceptions and use f-strings for logging
 "src/app/core/decorators.py" = ["BLE001", "G004", "ANN401", "B008", "PLC0415"]
 "src/app/infrastructure/observability/monitor.py" = ["BLE001", "G004", "ANN401", "B008", "PLC0415", "PLE1205"]
+"src/app/infrastructure/observability/logging.py" = ["ANN401"]
 
 [tool.ruff.lint.flake8-bugbear]
 # Разрешаем некоторые функции как дефолтные аргументы (FastAPI Depends)
@@ -143,19 +144,19 @@ extend-immutable-calls = [
     "fastapi.Body"
 ]
 
-#[tool.ruff.lint.isort]
-## Настройки импортов
-### Опционально: стиль объединения импортов (чтобы не было ошибок со скобками)
-## --- Обязательно для WPS ---
-#lines-after-imports = 2           # WPS306 требует ровно 2 пустые строки после блока импортов
-#combine-as-imports = false         # Объединять "from x import (a, b)"
-#
-## --- Отключить то, что вы включали ранее ---
-#force-single-line = true         # WPS не требует Java-стиля, он любит скобки
-#force-wrap-aliases = true        # Обычно false
-#
-## --- приложение ---
-#known-first-party = ["app"]
+[tool.ruff.lint.isort]
+# Настройки импортов
+## Опционально: стиль объединения импортов (чтобы не было ошибок со скобками)
+# --- Обязательно для WPS ---
+lines-after-imports = 2           # WPS306 требует ровно 2 пустые строки после блока импортов
+combine-as-imports = false         # Объединять "from x import (a, b)"
+
+# --- Отключить то, что вы включали ранее ---
+force-single-line = true         # WPS не требует Java-стиля, он любит скобки
+force-wrap-aliases = true        # Обычно false
+
+# --- приложение ---
+known-first-party = ["app"]
 
 [tool.ruff.lint.pylint]
 # Максимальное количество аргументов функции (по умолчанию 5)
@@ -174,6 +175,7 @@ quote-style = "double"
 # Указываем версию Python и где искать код
 python_version = "3.12"
 files = ["src"]
+mypy_path = "src"
 
 # ---------------------------------------------------------
 # 1. Глобальная строгость (Включает большинство проверок)
@@ -303,11 +305,16 @@ ignore = [
     "WPS110", # Wrong variable name (result, value, etc)
     "WPS111", # Short variable name (e, k, v)
     "WPS229", # Too long try body length
+    "WPS318", # Found extra indentation (conflicts with ruff-format)
+    "WPS319", # Found bracket in wrong position (conflicts with ruff-format)
 ]
 per-file-ignores = [
     "src/app/core/types.py: WPS115",
     "**/types.py: WPS115",
-    "src/app/infrastructure/observability/monitor.py: WPS201, WPS433, WPS221, WPS230, WPS231, WPS210, WPS220, C901"
+    "src/app/infrastructure/observability/monitor.py: WPS201, WPS433, WPS221, WPS230, WPS231, WPS210, WPS220, C901",
+    "src/app/core/app_factory.py: WPS201",
+    "src/app/infrastructure/observability/logging.py: WPS201",
+    "tests/*: WPS442, WPS237, WPS432, WPS317, WPS318, WPS319"
 ]
 #WPS210: Слишком много локальных переменных.
 #WPS220: Слишком глубокая вложенность.

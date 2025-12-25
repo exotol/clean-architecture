@@ -1,7 +1,5 @@
-from pydantic import (
-    BaseModel,
-    Field,
-)
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class SearchRequest(BaseModel):

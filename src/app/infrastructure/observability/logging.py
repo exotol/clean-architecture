@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import Any
+from typing import TYPE_CHECKING
 
-from dependency_injector.wiring import Provide, inject
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
 from loguru import logger
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider

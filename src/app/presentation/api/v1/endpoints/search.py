@@ -1,19 +1,13 @@
-from dependency_injector.wiring import (
-    Provide,
-    inject,
-)
-from fastapi import (
-    APIRouter,
-    Depends,
-)
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
+from fastapi import APIRouter
+from fastapi import Depends
 
 from app.application.services.search_service import SearchService
 from app.core.containers import AppContainer
-from app.presentation.api.schemas.search import (
-    Document,
-    SearchRequest,
-    SearchResponse,
-)
+from app.presentation.api.schemas.search import Document
+from app.presentation.api.schemas.search import SearchRequest
+from app.presentation.api.schemas.search import SearchResponse
 
 router = APIRouter()
 

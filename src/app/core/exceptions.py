@@ -1,6 +1,9 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 
-from app.core.constants import DEFAULT_PROBLEM_DETAIL_TYPE, NO_PARAMS
+from app.core.constants import DEFAULT_PROBLEM_DETAIL_TYPE
+from app.core.constants import NO_PARAMS
 
 
 class Reason(BaseModel):

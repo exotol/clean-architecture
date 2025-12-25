@@ -2,22 +2,16 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
 
-from app.core.constants import (
-    TRACE_ID,
-    VALIDATION_UUID_OFF,
-)
+from app.core.constants import TRACE_ID
+from app.core.constants import VALIDATION_UUID_OFF
 from app.core.containers import AppContainer
-from app.core.exceptions import (
-    BusinessException,
-    InfrastructureException,
-)
+from app.core.exceptions import BusinessException
+from app.core.exceptions import InfrastructureException
 from app.infrastructure.observability.logging import setup_logging
 from app.presentation.api.application_api import create_main_router
-from app.presentation.api.exception_handlers import (
-    business_exception_handler,
-    global_exception_handler,
-    infrastructure_handler,
-)
+from app.presentation.api.exception_handlers import business_exception_handler
+from app.presentation.api.exception_handlers import global_exception_handler
+from app.presentation.api.exception_handlers import infrastructure_handler
 from app.utils.configs import load_settings
 
 
