@@ -1,31 +1,29 @@
 repos:
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.4
     hooks:
       - id: ruff
-        args: [ --fix ] # Автоматически чинит ошибки и импорты
+        args: [--fix] # Автоматически чинит ошибки и импорты
       - id: ruff-format # Форматирует код (как Black)
-        args: [ --diff ]
+        args: [--diff]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
-        additional_dependencies: [ pydantic, fastapi ] # Укажите зависимости
+        additional_dependencies: [pydantic, fastapi] # Укажите зависимости
   - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0  # Проверьте актуальную версию
+    rev: 7.0.0 # Проверьте актуальную версию
     hooks:
-      - id: flake8
+      - id:
+          flake8
           # Передаем аргументы списком
-        args: [ --select=WPS ]
-       # Нужно доустановить wps в окружение pre-commit
-        additional_dependencies: [
-            "wemake-python-styleguide",
-            "Flake8-pyproject"
-        ]
+        args: [--select=WPS]
+        # Нужно доустановить wps в окружение pre-commit
+        additional_dependencies:
+          ["wemake-python-styleguide", "Flake8-pyproject"]
   - repo: https://github.com/terrencepreilly/darglint
-    rev: v1.8.1  # Последняя стабильная версия
+    rev: v1.8.1 # Последняя стабильная версия
     hooks:
       - id: darglint
         # Опционально: если нужно передать аргументы прямо здесь,
