@@ -1,4 +1,10 @@
 .venv/
-.idea/*
-.idea
+.idea/
 .secrets.toml
+.git/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+artifacts/
+*.pyc

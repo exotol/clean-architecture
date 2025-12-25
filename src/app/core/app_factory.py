@@ -1,4 +1,5 @@
 from asgi_correlation_id import CorrelationIdMiddleware
+from dependency_injector.wiring import Provide
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -10,13 +11,19 @@ from app.core.exceptions import BusinessError, InfrastructureError
 from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
 from app.presentation.api.application_api import create_main_router
-from app.presentation.api.exception_handlers import global_exception_handler, \
-    infra_error_handler, business_error_handler
+from app.presentation.api.exception_handlers import (
+    global_exception_handler,
+    infra_error_handler,
+    business_error_handler
+)
 from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
 
 
-def create_middleware_list(security_config: SecurityConfig) -> list[Middleware]:
+def create_middleware_list(
+    security_config: SecurityConfig = Provide[
+        AppContainer.infra_container.security_config]
+) -> list[Middleware]:
     return [
         Middleware(
             CorrelationIdMiddleware,
@@ -54,15 +61,10 @@ def create_app() -> FastAPI:
     container: AppContainer = AppContainer()
     settings = load_settings()
     container.infra_container.config.from_dict(settings.as_dict())
-    
-    # Load Security Config
-    security_data = settings.get("SECURITY", {})
-    security_config = SecurityConfig(**security_data)
-    
     setup_logging()
     setup_metrics()
     app = FastAPI(
-        middleware=create_middleware_list(security_config),
+        middleware=create_middleware_list(),
         on_startup=[container.init_resources],
         on_shutdown=[container.shutdown_resources],
     )
