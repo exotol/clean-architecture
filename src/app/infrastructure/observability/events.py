@@ -9,3 +9,4 @@ class Event(NamedTuple):
 
 class Events(Enum):
     SEARCH_SERVICE = Event("SEARCH_SERVICE", "Search service execution")
+    HEALTHCHECK = Event("HEALTHCHECK", "Healthcheck execution")
