@@ -105,3 +105,8 @@ block.off.index:
 run.pytest:
 	@echo "Запуск pytest"
 	pytest tests
+
+run.load:
+	@echo "Запуск нагрузочного тестирования (Locust)"
+	# Запуск Locust. Можно передать параметры через ARGS, например: make run.load ARGS="--headless -u 10 -r 2 -t 30s"
+	uv run --active locust -f tests/performance/locustfile.py $(ARGS)

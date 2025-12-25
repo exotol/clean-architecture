@@ -172,3 +172,29 @@ pytest tests
 ```bash
 pre-commit run --all-files
 ```
+
+## Performance Testing
+
+We use [Locust](https://locust.io/) for load testing.
+
+### Running Tests
+To start the Locust Web UI:
+```bash
+make run.load
+```
+Then open http://localhost:8089 in your browser.
+
+### Headless Mode (CI/CD)
+To run tests without UI (e.g., for 30 seconds with 10 users):
+```bash
+make run.load ARGS="--headless -u 10 -r 2 -t 30s"
+```
+
+### Stress Testing (Max RPS)
+To run a stress test with no wait time between requests:
+```bash
+make run.load ARGS="EvaStressUser --headless -u 10 -r 2 -t 30s"
+```
+
+## 📈 Monitoring
+
