@@ -1,22 +1,22 @@
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
-from fastapi.middleware import Middleware
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware import Middleware
 
-from app.core.constants import TRACE_ID
-from app.core.constants import VALIDATION_UUID_OFF
+from app.core.constants import TRACE_ID, VALIDATION_UUID_OFF
 from app.core.containers import AppContainer
-from app.core.exceptions import BusinessException
-from app.core.exceptions import InfrastructureException
+from app.core.exceptions import BusinessError, InfrastructureError
 from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
 from app.presentation.api.application_api import create_main_router
-from app.presentation.api.exception_handlers import business_exception_handler
-from app.presentation.api.exception_handlers import global_exception_handler
-from app.presentation.api.exception_handlers import infrastructure_handler
+from app.presentation.api.exception_handlers import global_exception_handler, \
+    infra_error_handler, business_error_handler
+from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
 
 
-def create_middleware_list() -> list[Middleware]:
+def create_middleware_list(security_config: SecurityConfig) -> list[Middleware]:
     return [
         Middleware(
             CorrelationIdMiddleware,
@@ -26,22 +26,47 @@ def create_middleware_list() -> list[Middleware]:
             # Опционально: отключаем валидацию UUID,
             # если ID имеют другой формат
             validator=VALIDATION_UUID_OFF,
+        ),
+        Middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=security_config.trusted_hosts,
+        ),
+        Middleware(
+            CORSMiddleware,
+            allow_origins=security_config.cors_origins,
+            allow_credentials=security_config.cors_allow_credentials,
+            allow_methods=security_config.cors_allow_methods,
+            allow_headers=security_config.cors_allow_headers,
         )
     ]
 
 
+def add_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(InfrastructureError, infra_error_handler)
+    app.add_exception_handler(BusinessError, business_error_handler)
+    app.add_exception_handler(Exception, global_exception_handler)
+
+
 def create_app() -> FastAPI:
+    """
+    Factory function to create the FastAPI application.
+    """
     container: AppContainer = AppContainer()
-    container.infra_container.config.from_dict(load_settings().as_dict())
+    settings = load_settings()
+    container.infra_container.config.from_dict(settings.as_dict())
+    
+    # Load Security Config
+    security_data = settings.get("SECURITY", {})
+    security_config = SecurityConfig(**security_data)
+    
     setup_logging()
     setup_metrics()
     app = FastAPI(
-        middleware=create_middleware_list(),
+        middleware=create_middleware_list(security_config),
         on_startup=[container.init_resources],
         on_shutdown=[container.shutdown_resources],
     )
+
     app.include_router(create_main_router())
-    app.add_exception_handler(InfrastructureException, infrastructure_handler)
-    app.add_exception_handler(BusinessException, business_exception_handler)
-    app.add_exception_handler(Exception, global_exception_handler)
+    add_exception_handlers(app)
     return app

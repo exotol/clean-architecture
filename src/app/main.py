@@ -23,9 +23,8 @@ def main(
 
 
 def init_server_container() -> None:
-    settings_dict = load_settings().as_dict()
     container = ServerContainer()
-    container.infra_container.config.from_dict(settings_dict)
+    container.infra_container.config.from_dict(load_settings().as_dict())
 
 
 if __name__ == "__main__":

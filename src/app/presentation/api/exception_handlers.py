@@ -12,7 +12,7 @@ from app.core.exceptions import ProblemDetail
 from app.core.exceptions import Reasons
 
 
-def business_exception_handler(
+def business_error_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:
     """
@@ -82,7 +82,7 @@ def business_exception_handler(
     )
 
 
-def infrastructure_handler(request: Request, exc: Exception) -> JSONResponse:
+def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Обработчик ошибок инфраструктуры.
 

@@ -103,29 +103,21 @@ class ProblemDetail(BaseModel):
     )
 
 
-class AppException(Exception):
+class AppError(Exception):
     """Базовый класс для всех ошибок приложения."""
 
 
-class BusinessException(AppException):
+class BusinessError(AppError):
     """Бизнес-ошибки (клиент виноват / нарушены правила)."""
 
-    urn_type_error: str | None = Field(
-        Reasons.business_rule_violation.urn_type_error
-    )
-    code: str | None = Field(
-        Reasons.business_rule_violation.code,
-    )
-    title: str | None = Field(
-        Reasons.business_rule_violation.title,
-    )
-    detail: str | None = Field(
-        Reasons.business_rule_violation.message,
-    )
+    urn_type_error: str | None = Reasons.business_rule_violation.urn_type_error
+    code: str | None = Reasons.business_rule_violation.code
+    title: str | None = Reasons.business_rule_violation.title
+    detail: str | None = Reasons.business_rule_violation.message
 
 
 # --- Инфраструктурные ошибки (система виновата) ---
-class InfrastructureException(AppException):
+class InfrastructureError(AppError):
     """
     Инфраструктурные ошибки.
 

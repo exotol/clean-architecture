@@ -52,3 +52,11 @@ class ServerConfig(BaseModel):
     factory: bool
     log_level: str
     log_access: bool
+
+
+class SecurityConfig(BaseModel):
+    cors_origins: list[str] = ["*"]
+    cors_allow_credentials: bool = True
+    cors_allow_methods: list[str] = ["*"]
+    cors_allow_headers: list[str] = ["*"]
+    trusted_hosts: list[str] = ["*"]

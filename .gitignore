@@ -1,4 +1,4 @@
-UPD.venv/
+.venv/
 .idea/*
 .idea
 .secrets.toml

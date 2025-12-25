@@ -15,8 +15,8 @@ from loguru import logger
 from opentelemetry import trace
 from pydantic import BaseModel
 
-from app.core.exceptions import BusinessException
-from app.core.exceptions import InfrastructureException
+from app.core.exceptions import BusinessError
+from app.core.exceptions import InfrastructureError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -211,9 +211,9 @@ class _MonitoringHandler:
 
 
 def _classify_error(exc: Exception) -> str:
-    if isinstance(exc, BusinessException):
+    if isinstance(exc, BusinessError):
         return "business"
-    if isinstance(exc, InfrastructureException):
+    if isinstance(exc, InfrastructureError):
         return "infrastructure"
     return "unknown"
 
