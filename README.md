@@ -124,3 +124,51 @@ src/app/
 └── utils/                     # Utilities
     └── configs.py             # Configuration Management
 ```
+
+## Тестирование (Testing)
+
+Тесты используют **Data-Driven** подход и строгую типизацию.
+
+### Подход
+*   **Data-Driven Tests**: Все тесты используют `pytest.mark.parametrize` с явными `id` для каждого кейса.
+*   **Pydantic Models**: Вместо `dataclasses` используются Pydantic-модели для описания входных данных (`Entity`) и ожидаемых результатов (`Expected`).
+*   **Reusability**: Схемы приложения (`app.presentation.api.schemas`) переиспользуются в E2E тестах.
+*   **Separation of Concerns**: Тестовые сущности вынесены в отдельную директорию `tests/schemas`.
+
+### Структура тестов
+
+```text
+tests/
+├── schemas/                   # Test Data Definitions (Pydantic)
+│   ├── e2e/                   # Schemas for E2E tests
+│   ├── integration/           # Schemas for Integration tests
+│   └── unit/                  # Schemas for Unit tests
+│
+├── e2e/                       # End-to-End Tests (API)
+│   └── api/
+│       ├── test_search_endpoint.py
+│       ├── test_healthcheck_endpoint.py
+│       └── test_root_endpoint.py
+│
+├── integration/               # Integration Tests (DB, Infra)
+│   └── infrastructure/
+│       └── test_search_repository.py
+│
+├── unit/                      # Unit Tests (Business Logic)
+│   └── application/
+│       └── test_search_service.py
+│
+└── conftest.py                # Global Fixtures (App, Client, Async)
+```
+
+### Запуск тестов
+
+Запуск всех тестов:
+```bash
+pytest tests
+```
+
+Запуск линтеров и форматтеров (Pre-commit):
+```bash
+pre-commit run --all-files
+```
