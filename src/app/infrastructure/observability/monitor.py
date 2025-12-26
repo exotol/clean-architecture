@@ -12,9 +12,10 @@ from typing import TypeVar
 from typing import cast
 
 from loguru import logger
-from opentelemetry import trace
+from opentelemetry import trace, metrics
 from pydantic import BaseModel
 
+from app.core import constants
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 
@@ -71,20 +72,41 @@ class _MonitoringHandler:
         self.__doc__ = getattr(func, "__doc__", None)
         self.__wrapped__ = func
 
-    @property
-    def metrics_service(self) -> MetricsService:
-        """
-        Lazy resolution of MetricsService from container.
+        # Metrics
+        self.meter = metrics.get_meter(__name__)
+        self.requests_total = self.meter.create_counter(
+            name=constants.METRICS_REQUESTS_TOTAL_NAME,
+            description=constants.METRICS_REQUESTS_TOTAL_DESC,
+            unit=constants.METRICS_REQUESTS_TOTAL_UNIT,
+        )
+        self.request_duration = self.meter.create_histogram(
+            name=constants.METRICS_REQUEST_DURATION_NAME,
+            description=constants.METRICS_REQUEST_DURATION_DESC,
+            unit=constants.METRICS_REQUEST_DURATION_UNIT,
+        )
 
-        Returns:
-            MetricsService: Metrics service instance.
+    def record_request(
+        self,
+        event_name: str,
+        duration: float,
+        status: str,
+        error_type: str | None = None,
+    ) -> None:
         """
-        if self._metrics_service is None:
-            # Lazy import to avoid circular dependency
-            from app.core.containers import InfrastructureContainer
+        Record request metrics.
 
-            self._metrics_service = InfrastructureContainer.metrics_service()
-        return self._metrics_service
+        Args:
+            event_name: Name of the event/service.
+            duration: Duration of the request in seconds.
+            status: Status of the request (success/error).
+            error_type: Type of error (business/infrastructure/unknown) if any.
+        """
+        attributes = {"event": event_name, "status": status}
+        if error_type:
+            attributes["error_type"] = error_type
+
+        self.requests_total.add(1, attributes)
+        self.request_duration.record(duration, {"event": event_name})
 
     def get_bound_logger(
         self, args: tuple[object, ...], kwargs: dict[str, object]
@@ -158,7 +180,7 @@ class _MonitoringHandler:
             start_time: Start time of the event.
         """
         duration = perf_counter() - start_time
-        self.metrics_service.record_request(
+        self.record_request(
             event_name=self.event_name,
             duration=duration,
             status="success",
@@ -181,7 +203,7 @@ class _MonitoringHandler:
         """
         duration = perf_counter() - start_time
         error_type = _classify_error(exc)
-        self.metrics_service.record_request(
+        self.record_request(
             event_name=self.event_name,
             duration=duration,
             status="error",
