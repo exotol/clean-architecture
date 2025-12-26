@@ -19,3 +19,6 @@ METRICS_REQUESTS_TOTAL_UNIT = "1"
 METRICS_REQUEST_DURATION_NAME = "app_request_duration_seconds"
 METRICS_REQUEST_DURATION_DESC = "Request duration in seconds"
 METRICS_REQUEST_DURATION_UNIT = "s"
+
+# Tracing
+OTLP_LOCAL_ENDPOINT = "console"

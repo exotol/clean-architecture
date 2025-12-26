@@ -53,7 +53,9 @@ def create_middleware_list(
 def add_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
-    app.add_exception_handler(RequestValidationError, request_validation_handler)
+    app.add_exception_handler(
+        RequestValidationError, request_validation_handler
+    )
     app.add_exception_handler(Exception, global_exception_handler)
 
 

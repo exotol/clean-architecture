@@ -8,7 +8,10 @@ from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
 from app.infrastructure.services.metrics_service import MetricsService
-from app.utils.configs import LoggerConfig, MetricsConfig, SecurityConfig
+from app.utils.configs import LoggerConfig
+from app.utils.configs import MetricsConfig
+from app.utils.configs import OTLPConfig
+from app.utils.configs import SecurityConfig
 from app.utils.configs import ServerConfig
 
 
@@ -50,6 +53,14 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         cors_allow_methods=config.SECURITY.CORS.ALLOW.METHODS,
         cors_allow_headers=config.SECURITY.CORS.ALLOW.HEADERS,
         trusted_hosts=config.SECURITY.TRUSTED.HOSTS
+    )
+
+    otlp_config = providers.Singleton(
+        OTLPConfig,
+        enabled=config.TRACING.OTLP.ENABLED,
+        endpoint=config.TRACING.OTLP.ENDPOINT,
+        service_name=config.TRACING.OTLP.SERVICE_NAME,
+        insecure=config.TRACING.OTLP.INSECURE
     )
 
     metrics_service = providers.Singleton(MetricsService)

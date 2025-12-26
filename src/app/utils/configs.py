@@ -55,8 +55,15 @@ class ServerConfig(BaseModel):
 
 
 class SecurityConfig(BaseModel):
-    cors_origins: list[str] = ["*"]
-    cors_allow_credentials: bool = True
-    cors_allow_methods: list[str] = ["*"]
-    cors_allow_headers: list[str] = ["*"]
-    trusted_hosts: list[str] = ["*"]
+    cors_origins: list[str]
+    cors_allow_credentials: bool
+    cors_allow_methods: list[str]
+    cors_allow_headers: list[str]
+    trusted_hosts: list[str]
+
+
+class OTLPConfig(BaseModel):
+    enabled: bool
+    endpoint: str
+    service_name: str
+    insecure: bool

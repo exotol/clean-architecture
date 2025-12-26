@@ -9,7 +9,12 @@ from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 from loguru import logger
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import \
+    OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 
 from app.core.containers import AppContainer
 
@@ -17,6 +22,7 @@ if TYPE_CHECKING:
     from types import FrameType
 
     from app.utils.configs import LoggerConfig
+    from app.utils.configs import OTLPConfig
 
 
 class InterceptHandler(logging.Handler):
@@ -24,7 +30,6 @@ class InterceptHandler(logging.Handler):
     Перехватывает стандартные логи Python и отправляет их в Loguru.
 
     https://github.com/Delgan/loguru
-
     """
 
     def __init__(self, depth: int = 2) -> None:
@@ -72,9 +77,30 @@ def setup_logging(
     logger_config: LoggerConfig = Provide[
         AppContainer.infra_container.logger_config
     ],
+    otlp_config: OTLPConfig = Provide[
+        AppContainer.infra_container.otlp_config
+    ],
 ) -> None:
-    # 0. Настраиваем OpenTelemetry (чтобы были TraceID)
-    trace.set_tracer_provider(TracerProvider())
+    # 0. Настраиваем OpenTelemetry
+    resource = Resource.create(
+        attributes={"service.name": otlp_config.service_name}
+    )
+    provider = TracerProvider(resource=resource)
+
+    # Выбираем экспортер
+    if otlp_config.enabled:
+        if otlp_config.endpoint == OTLP_LOCAL_ENDPOINT:
+            processor = BatchSpanProcessor(ConsoleSpanExporter())
+        else:
+            processor = BatchSpanProcessor(
+                OTLPSpanExporter(
+                    endpoint=otlp_config.endpoint,
+                    insecure=otlp_config.insecure,
+                )
+            )
+        provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
 
     # 1. Удаляем дефолтный обработчик Loguru
     logger.remove()

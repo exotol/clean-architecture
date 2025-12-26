@@ -15,6 +15,7 @@ dependencies = [
     "opentelemetry-sdk>=1.24.0",
     "opentelemetry-instrumentation-fastapi>=0.45.0",
     "opentelemetry-exporter-prometheus",
+    "opentelemetry-exporter-otlp>=1.24.0",
 ]
 
 [dependency-groups]
