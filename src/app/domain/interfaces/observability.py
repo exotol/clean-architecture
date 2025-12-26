@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 from typing import Protocol
 from typing import runtime_checkable
@@ -13,7 +15,7 @@ class ILoggingStrategy(Protocol):
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
         *,
-        use_log_args: bool = True,
+        use_log_args: bool,
     ) -> Any:
         """Log start of execution."""
         ...
@@ -24,7 +26,7 @@ class ILoggingStrategy(Protocol):
         result: Any,
         context: Any,
         *,
-        use_log_result: bool = True,
+        use_log_result: bool,
     ) -> None:
         """Log successful execution."""
         ...
