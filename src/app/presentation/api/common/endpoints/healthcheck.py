@@ -3,8 +3,8 @@ from http import HTTPStatus
 from fastapi import APIRouter
 
 from app.core.events import Events
-from app.core.monitor import monitor
 from app.presentation.api.schemas.healthcheck import Healthcheck
+from app.utils.monitor import monitor
 
 router = APIRouter()
 
