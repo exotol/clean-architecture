@@ -1,5 +1,3 @@
-from loguru import logger
-
 from app.domain.entities.document import Document
 from app.domain.interfaces.search_repository import ISearchRepository
 from app.infrastructure.observability.events import Events
@@ -16,5 +14,4 @@ class SearchService:
         use_log_result=True,
     )
     async def search(self, query: str) -> list[Document]:
-        logger.info(query)
         return await self._repository.search(query=query)
