@@ -7,7 +7,6 @@ from app.application.services.search_service import SearchService
 from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
-from app.infrastructure.services.metrics_service import MetricsService
 from app.utils.configs import LoggerConfig
 from app.utils.configs import MetricsConfig
 from app.utils.configs import OTLPConfig
@@ -62,8 +61,6 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         service_name=config.TRACING.OTLP.SERVICE_NAME,
         insecure=config.TRACING.OTLP.INSECURE
     )
-
-    metrics_service = providers.Singleton(MetricsService)
 
 
 class ServerContainer(containers.DeclarativeContainer):
