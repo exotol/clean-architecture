@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any
 from typing import TYPE_CHECKING
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
-from loguru import logger
+from loguru import logger, Record
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import \
     OTLPSpanExporter
@@ -16,6 +15,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 
+from app.core.constants import OTLP_LOCAL_ENDPOINT
 from app.core.containers import AppContainer
 
 if TYPE_CHECKING:
@@ -55,7 +55,7 @@ class InterceptHandler(logging.Handler):
         )
 
 
-def record_patcher(record: dict[str, Any]) -> None:
+def record_patcher(record: Record) -> None:
     """
     Патчер для Loguru, который добавляет trace_id и span_id из OpenTelemetry.
 

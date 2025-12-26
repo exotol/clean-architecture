@@ -24,11 +24,12 @@ from app.utils.configs import load_settings
 
 def create_middleware_list(
     security_config: SecurityConfig = Provide[
-        AppContainer.infra_container.security_config]
+        AppContainer.infra_container.security_config
+    ]
 ) -> list[Middleware]:
     return [
         Middleware(
-            CorrelationIdMiddleware,
+            type[CorrelationIdMiddleware],
             # Указываем имя хедера, который мы
             # ждем от клиента (или генерируем)
             header_name=TRACE_ID,
@@ -37,11 +38,11 @@ def create_middleware_list(
             validator=VALIDATION_UUID_OFF,
         ),
         Middleware(
-            TrustedHostMiddleware,
+            type[TrustedHostMiddleware],
             allowed_hosts=security_config.trusted_hosts,
         ),
         Middleware(
-            CORSMiddleware,
+            type[CORSMiddleware],
             allow_origins=security_config.cors_origins,
             allow_credentials=security_config.cors_allow_credentials,
             allow_methods=security_config.cors_allow_methods,
