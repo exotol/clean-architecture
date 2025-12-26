@@ -2,8 +2,8 @@ from http import HTTPStatus
 
 from fastapi import APIRouter
 
-from app.infrastructure.observability.events import Events
-from app.infrastructure.observability.monitor import monitor
+from app.core.events import Events
+from app.core.monitor import monitor
 from app.presentation.api.schemas.healthcheck import Healthcheck
 
 router = APIRouter()

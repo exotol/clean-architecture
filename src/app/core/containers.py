@@ -4,6 +4,9 @@ from granian import Granian
 from granian.constants import Interfaces
 
 from app.application.services.search_service import SearchService
+from app.infrastructure.observability.strategies.logging import StandardLoggingStrategy
+from app.infrastructure.observability.strategies.metrics import OpentelemetryMetricsStrategy
+from app.infrastructure.observability.strategies.tracing import OpentelemetryTracingStrategy
 from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
@@ -61,6 +64,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         service_name=config.TRACING.OTLP.SERVICE_NAME,
         insecure=config.TRACING.OTLP.INSECURE
     )
+
+    logging_strategy = providers.Singleton(StandardLoggingStrategy)
+    tracing_strategy = providers.Singleton(OpentelemetryTracingStrategy)
+    metrics_strategy = providers.Singleton(OpentelemetryMetricsStrategy)
 
 
 class ServerContainer(containers.DeclarativeContainer):

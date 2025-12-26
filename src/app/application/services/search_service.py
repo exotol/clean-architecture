@@ -1,7 +1,7 @@
+from app.core.events import Events
+from app.core.monitor import monitor
 from app.domain.entities.document import Document
 from app.domain.interfaces.search_repository import ISearchRepository
-from app.infrastructure.observability.events import Events
-from app.infrastructure.observability.monitor import monitor
 
 
 class SearchService:
