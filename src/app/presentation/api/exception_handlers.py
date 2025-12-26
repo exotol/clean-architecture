@@ -216,11 +216,11 @@ def request_validation_handler(
         invalid_params.append({loc: msg})
 
     problem = ProblemDetail(
-        urn_type_error=Reasons.business_rule_violation.urn_type_error,
-        title="Validation Error",
+        urn_type_error=Reasons.validation_error.urn_type_error,
+        title=Reasons.validation_error.title,
         status=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-        reason="VALIDATION_ERROR",
-        detail="Request validation failed",
+        reason=Reasons.validation_error.code,
+        detail=Reasons.validation_error.message,
         instance=request.url.path,
         trace_id=trace_id,
         invalid_params=invalid_params,

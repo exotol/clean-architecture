@@ -38,6 +38,12 @@ class Reasons:
         message="The business rule violation.",
         title="Business Rule Violation",
     )
+    validation_error = Reason(
+        urn_type_error="urn:problem:validation-error",
+        code="VALIDATION_ERROR",
+        message="Request validation failed",
+        title="Validation Error"
+    )
 
 
 class ProblemDetail(BaseModel):
