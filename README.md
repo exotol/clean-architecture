@@ -196,5 +196,9 @@ To run a stress test with no wait time between requests:
 make run.load ARGS="EvaStressUser --headless -u 10 -r 2 -t 30s"
 ```
 
-## 📈 Monitoring
+# Как заставить UV использовать указанное ей окружение (другие способы не заработали)
+# Вставляет текущий $VIRTUAL_ENV в переменную конфигурации UV перед запуском
+```
+alias uv='UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV uv'
+```
 
