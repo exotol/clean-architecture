@@ -10,29 +10,36 @@ from app.domain.interfaces.observability import ILoggingStrategy
 
 class StandardLoggingStrategy(ILoggingStrategy):
     """
-    Logging strategy using standard logging (via Loguru interceptor or direct).
-    For now, we use Loguru as per current setup, but through the interface.
+    Logging strategy using Loguru.
+    Stateless - all configuration passed via method arguments.
     """
 
-    def __init__(self, use_log_args: bool = True, use_log_result: bool = True) -> None:
-        self.use_log_args = use_log_args
-        self.use_log_result = use_log_result
+    def log_start(
+        self,
+        event_name: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        *,
+        use_log_args: bool = True,
+    ) -> Any:
+        context: dict[str, Any] = {"event": event_name}
+        if use_log_args:
+            context["args"] = self._serialize_payload(args)
+            context["kwargs"] = self._serialize_payload(kwargs)
 
-    def log_start(self, event_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-        context = {"event": event_name}
-        if self.use_log_args:
-             # Note: We can't easily access the function signature here without passing the function itself.
-             # For simplicity in this refactor step, we'll log raw args/kwargs if needed, 
-             # or we can assume the caller handles serialization.
-             # To keep it clean, let's just log that we started.
-             pass
-        
         loguru_logger.bind(**context).info("{}_SEND", event_name)
         return loguru_logger.bind(**context)
 
-    def log_success(self, event_name: str, result: Any, context: Any) -> None:
+    def log_success(
+        self,
+        event_name: str,
+        result: Any,
+        context: Any,
+        *,
+        use_log_result: bool = True,
+    ) -> None:
         bound_logger = context
-        if self.use_log_result:
+        if use_log_result:
             bound_logger = bound_logger.bind(result=self._serialize_payload(result))
         bound_logger.info("{}_SUCCESS", event_name)
 

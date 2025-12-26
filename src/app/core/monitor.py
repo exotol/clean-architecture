@@ -105,10 +105,9 @@ class _MonitoringHandler:
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[float, Any]:
         """Logs start and returns (start_time, log_context)."""
-        if hasattr(self.logging_strategy, "use_log_args"):
-            self.logging_strategy.use_log_args = self.use_log_args  # type: ignore[attr-defined]
-
-        context = self.logging_strategy.log_start(self.event_name, args, kwargs)
+        context = self.logging_strategy.log_start(
+            self.event_name, args, kwargs, use_log_args=self.use_log_args
+        )
         return perf_counter(), context
 
     def log_success(self, result: Any, start_time: float, context: Any) -> None:
@@ -119,10 +118,9 @@ class _MonitoringHandler:
             status="success",
         )
 
-        if hasattr(self.logging_strategy, "use_log_result"):
-            self.logging_strategy.use_log_result = self.use_log_result  # type: ignore[attr-defined]
-
-        self.logging_strategy.log_success(self.event_name, result, context)
+        self.logging_strategy.log_success(
+            self.event_name, result, context, use_log_result=self.use_log_result
+        )
 
     def log_error(self, exc: Exception, start_time: float, context: Any) -> None:
         duration = perf_counter() - start_time

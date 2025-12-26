@@ -7,11 +7,25 @@ from typing import runtime_checkable
 class ILoggingStrategy(Protocol):
     """Interface for logging strategy."""
 
-    def log_start(self, event_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+    def log_start(
+        self,
+        event_name: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        *,
+        use_log_args: bool = True,
+    ) -> Any:
         """Log start of execution."""
         ...
 
-    def log_success(self, event_name: str, result: Any, context: Any) -> None:
+    def log_success(
+        self,
+        event_name: str,
+        result: Any,
+        context: Any,
+        *,
+        use_log_result: bool = True,
+    ) -> None:
         """Log successful execution."""
         ...
 
