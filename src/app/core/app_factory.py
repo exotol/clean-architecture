@@ -1,6 +1,7 @@
 from asgi_correlation_id import CorrelationIdMiddleware
 from dependency_injector.wiring import Provide
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware import Middleware
@@ -14,7 +15,8 @@ from app.presentation.api.application_api import create_main_router
 from app.presentation.api.exception_handlers import (
     global_exception_handler,
     infra_error_handler,
-    business_error_handler
+    business_error_handler,
+    request_validation_handler,
 )
 from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
@@ -51,6 +53,7 @@ def create_middleware_list(
 def add_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_handler)
     app.add_exception_handler(Exception, global_exception_handler)
 
 

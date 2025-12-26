@@ -187,3 +187,46 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         # exclude_none=True уберет пустые поля (invalid_params)
         content=problem.model_dump(by_alias=True, exclude_none=True),
     )
+
+
+def request_validation_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """
+    Обработчик ошибок валидации Pydantic/FastAPI.
+    """
+    trace_id = (
+        getattr(request.state, TRACE_ID, None)
+        or request.headers.get(TRACE_ID, None)
+        or str(uuid.uuid4())
+    )
+
+    # Логируем как warning
+    logger.warning(
+        "Validation error: {errors}",
+        errors=exc.errors(),
+        extra={"trace_id": trace_id},
+    )
+
+    # Преобразуем ошибки Pydantic в наш формат
+    invalid_params = []
+    for error in exc.errors():
+        loc = ".".join(str(x) for x in error.get("loc", []))
+        msg = error.get("msg", "Unknown error")
+        invalid_params.append({loc: msg})
+
+    problem = ProblemDetail(
+        urn_type_error=Reasons.business_rule_violation.urn_type_error,
+        title="Validation Error",
+        status=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+        reason="VALIDATION_ERROR",
+        detail="Request validation failed",
+        instance=request.url.path,
+        trace_id=trace_id,
+        invalid_params=invalid_params,
+    )
+
+    return JSONResponse(
+        status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=problem.model_dump(by_alias=True, exclude_none=True),
+    )
