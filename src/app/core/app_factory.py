@@ -29,7 +29,7 @@ def create_middleware_list(
 ) -> list[Middleware]:
     return [
         Middleware(
-            type[CorrelationIdMiddleware],
+            CorrelationIdMiddleware,
             # Указываем имя хедера, который мы
             # ждем от клиента (или генерируем)
             header_name=TRACE_ID,
@@ -38,11 +38,11 @@ def create_middleware_list(
             validator=VALIDATION_UUID_OFF,
         ),
         Middleware(
-            type[TrustedHostMiddleware],
+            TrustedHostMiddleware,
             allowed_hosts=security_config.trusted_hosts,
         ),
         Middleware(
-            type[CORSMiddleware],
+            CORSMiddleware,
             allow_origins=security_config.cors_origins,
             allow_credentials=security_config.cors_allow_credentials,
             allow_methods=security_config.cors_allow_methods,
@@ -65,9 +65,12 @@ def create_app() -> FastAPI:
     Factory function to create the FastAPI application.
     """
     container: AppContainer = AppContainer()
-    settings = load_settings()
-    container.infra_container.config.from_dict(settings.as_dict())
-    setup_logging()
+    container.infra_container.config.from_dict(load_settings().as_dict())
+    
+    logger_config = container.infra_container.logger_config()
+    otlp_config = container.infra_container.otlp_config()
+    
+    setup_logging(logger_config=logger_config, otlp_config=otlp_config)
     setup_metrics()
     app = FastAPI(
         middleware=create_middleware_list(),

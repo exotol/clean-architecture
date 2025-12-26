@@ -6,6 +6,7 @@ from granian.server import MTServer
 from app.core.containers import ServerContainer
 from app.infrastructure.observability.logging import setup_logging
 from app.utils.configs import LoggerConfig
+from app.utils.configs import OTLPConfig
 from app.utils.configs import load_settings
 
 
@@ -17,8 +18,11 @@ def main(
     logger_config: LoggerConfig = Provide[
         ServerContainer.infra_container.logger_config
     ],
+    otlp_config: OTLPConfig = Provide[
+        ServerContainer.infra_container.otlp_config
+    ],
 ) -> None:
-    setup_logging(logger_config=logger_config)
+    setup_logging(logger_config=logger_config, otlp_config=otlp_config)
     granian_server.serve()
 
 

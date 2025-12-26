@@ -4,9 +4,7 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
-from dependency_injector.wiring import Provide
-from dependency_injector.wiring import inject
-from loguru import logger, Record
+from loguru import logger
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import \
     OTLPSpanExporter
@@ -16,7 +14,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 
 from app.core.constants import OTLP_LOCAL_ENDPOINT
-from app.core.containers import AppContainer
 
 if TYPE_CHECKING:
     from types import FrameType
@@ -55,7 +52,7 @@ class InterceptHandler(logging.Handler):
         )
 
 
-def record_patcher(record: Record) -> None:
+def record_patcher(record: logging.LogRecord) -> None:
     """
     Патчер для Loguru, который добавляет trace_id и span_id из OpenTelemetry.
 
@@ -72,35 +69,32 @@ def record_patcher(record: Record) -> None:
         record["extra"]["span_id"] = format(span_context.span_id, "016x")
 
 
-@inject
 def setup_logging(
-    logger_config: LoggerConfig = Provide[
-        AppContainer.infra_container.logger_config
-    ],
-    otlp_config: OTLPConfig = Provide[
-        AppContainer.infra_container.otlp_config
-    ],
+    logger_config: LoggerConfig,
+    otlp_config: OTLPConfig,
 ) -> None:
     # 0. Настраиваем OpenTelemetry
-    resource = Resource.create(
-        attributes={"service.name": otlp_config.service_name}
-    )
-    provider = TracerProvider(resource=resource)
-
-    # Выбираем экспортер
-    if otlp_config.enabled:
-        if otlp_config.endpoint == OTLP_LOCAL_ENDPOINT:
-            processor = BatchSpanProcessor(ConsoleSpanExporter())
-        else:
-            processor = BatchSpanProcessor(
-                OTLPSpanExporter(
-                    endpoint=otlp_config.endpoint,
-                    insecure=otlp_config.insecure,
+    # Проверяем, не установлен ли уже провайдер
+    if not isinstance(trace.get_tracer_provider(), TracerProvider):
+        resource = Resource.create(
+            attributes={"service.name": otlp_config.service_name}
+        )
+        provider = TracerProvider(resource=resource)
+    
+        # Выбираем экспортер
+        if otlp_config.enabled:
+            if otlp_config.endpoint == OTLP_LOCAL_ENDPOINT:
+                processor = BatchSpanProcessor(ConsoleSpanExporter())
+            else:
+                processor = BatchSpanProcessor(
+                    OTLPSpanExporter(
+                        endpoint=otlp_config.endpoint,
+                        insecure=otlp_config.insecure,
+                    )
                 )
-            )
-        provider.add_span_processor(processor)
-
-    trace.set_tracer_provider(provider)
+            provider.add_span_processor(processor)
+    
+        trace.set_tracer_provider(provider)
 
     # 1. Удаляем дефолтный обработчик Loguru
     logger.remove()
