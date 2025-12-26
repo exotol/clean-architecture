@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import cast
 
-from app.core.events import Events  # noqa: TC001
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
+
+from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 
@@ -25,6 +28,28 @@ if TYPE_CHECKING:
 # --- Typing ---
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+# --- Strategy Getters (using @inject) ---
+@inject
+def _get_logging_strategy(
+    strategy: ILoggingStrategy = Provide["infra_container.logging_strategy"],
+) -> ILoggingStrategy:
+    return strategy
+
+
+@inject
+def _get_tracing_strategy(
+    strategy: ITracingStrategy = Provide["infra_container.tracing_strategy"],
+) -> ITracingStrategy:
+    return strategy
+
+
+@inject
+def _get_metrics_strategy(
+    strategy: IMetricsStrategy = Provide["infra_container.metrics_strategy"],
+) -> IMetricsStrategy:
+    return strategy
 
 
 class _MonitoringHandler:
@@ -53,7 +78,7 @@ class _MonitoringHandler:
         self.action_when_exception = action_when_exception
         self.use_log_args = use_log_args
         self.use_log_result = use_log_result
-        
+
         self._logging_strategy: ILoggingStrategy | None = None
         self._tracing_strategy: ITracingStrategy | None = None
         self._metrics_strategy: IMetricsStrategy | None = None
@@ -61,38 +86,28 @@ class _MonitoringHandler:
     @property
     def logging_strategy(self) -> ILoggingStrategy:
         if self._logging_strategy is None:
-            from app.core.containers import InfrastructureContainer
-            self._logging_strategy = InfrastructureContainer.logging_strategy()
+            self._logging_strategy = _get_logging_strategy()
         return self._logging_strategy
 
     @property
     def tracing_strategy(self) -> ITracingStrategy:
         if self._tracing_strategy is None:
-            from app.core.containers import InfrastructureContainer
-            self._tracing_strategy = InfrastructureContainer.tracing_strategy()
+            self._tracing_strategy = _get_tracing_strategy()
         return self._tracing_strategy
 
     @property
     def metrics_strategy(self) -> IMetricsStrategy:
         if self._metrics_strategy is None:
-            from app.core.containers import InfrastructureContainer
-            self._metrics_strategy = InfrastructureContainer.metrics_strategy()
+            self._metrics_strategy = _get_metrics_strategy()
         return self._metrics_strategy
 
-    def log_start(self, args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[float, Any]:
-        """
-        Logs start and returns (start_time, log_context).
-        """
-        # Configure strategy if needed (e.g. set flags)
-        # Assuming strategy is stateful or we pass flags to methods.
-        # For now, we use the strategy as is.
-        # Ideally, strategies should be stateless or configured at creation.
-        # Here we might need to pass use_log_args to the strategy method if it supports it.
-        
-        # Hack: update strategy config if it's the standard one
+    def log_start(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[float, Any]:
+        """Logs start and returns (start_time, log_context)."""
         if hasattr(self.logging_strategy, "use_log_args"):
-             self.logging_strategy.use_log_args = self.use_log_args # type: ignore
-        
+            self.logging_strategy.use_log_args = self.use_log_args  # type: ignore[attr-defined]
+
         context = self.logging_strategy.log_start(self.event_name, args, kwargs)
         return perf_counter(), context
 
@@ -103,9 +118,9 @@ class _MonitoringHandler:
             duration=duration,
             status="success",
         )
-        
+
         if hasattr(self.logging_strategy, "use_log_result"):
-             self.logging_strategy.use_log_result = self.use_log_result # type: ignore
+            self.logging_strategy.use_log_result = self.use_log_result  # type: ignore[attr-defined]
 
         self.logging_strategy.log_success(self.event_name, result, context)
 
@@ -129,7 +144,6 @@ class _MonitoringHandler:
             if self.action_when_exception:
                 self.action_when_exception(exc)
         except Exception:
-            # Fallback logging if callback fails
             pass
 
 
@@ -141,18 +155,13 @@ def _classify_error(exc: Exception) -> str:
     return "unknown"
 
 
-def _async_wrapper(  # noqa: UP047
+def _async_wrapper(
     func: Callable[P, Coroutine[Any, Any, R]],
     handler: _MonitoringHandler,
 ) -> Callable[P, Coroutine[Any, Any, R]]:
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         span = handler.tracing_strategy.start_span(handler.event_name)
-        # Note: We need to ensure span is ended. 
-        # The strategy interface uses context manager in implementation usually, 
-        # but here we expose start/end for manual control or we need to wrap in `with`.
-        # Since `start_span` returns a context manager in OpenTelemetry, we can use it.
-        
         with span:
             start_time, context = handler.log_start(args, kwargs)
             try:
@@ -169,7 +178,7 @@ def _async_wrapper(  # noqa: UP047
     return wrapper
 
 
-def _sync_wrapper(  # noqa: UP047
+def _sync_wrapper(
     func: Callable[P, R],
     handler: _MonitoringHandler,
 ) -> Callable[P, R]:
@@ -200,9 +209,7 @@ def monitor(
     use_log_args: bool = True,
     use_log_result: bool = True,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """
-    Decorator factory for monitoring function execution.
-    """
+    """Decorator factory for monitoring function execution."""
 
     def decorator(
         func: Callable[P, R] | Callable[P, Coroutine[Any, Any, R]],
