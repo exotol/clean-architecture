@@ -20,6 +20,7 @@ from app.presentation.api.exception_handlers import (
 )
 from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
+from app.utils.serializer import AdvORJSONResponse
 
 
 def create_middleware_list(
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
         middleware=create_middleware_list(),
         on_startup=[container.init_resources],
         on_shutdown=[container.shutdown_resources],
+        default_response_class=AdvORJSONResponse
     )
 
     app.include_router(create_main_router())

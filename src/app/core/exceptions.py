@@ -130,3 +130,8 @@ class InfrastructureError(AppError):
     Cистема виновата: БД упала, S3 не отвечает.
 
     """
+
+
+class InnerTechError(Exception):
+    """Raised when serialization fails."""
+    pass

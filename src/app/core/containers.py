@@ -14,7 +14,9 @@ from app.utils.configs import LoggerConfig
 from app.utils.configs import MetricsConfig
 from app.utils.configs import OTLPConfig
 from app.utils.configs import SecurityConfig
+from app.utils.configs import SerializationConfig
 from app.utils.configs import ServerConfig
+from app.utils.serializer import ItemSerializer
 
 
 class InfrastructureContainer(containers.DeclarativeContainer):
@@ -65,7 +67,24 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         insecure=config.TRACING.OTLP.INSECURE
     )
 
-    logging_strategy = providers.Singleton(StandardLoggingStrategy)
+    serialization_config = providers.Singleton(
+        SerializationConfig,
+        max_depth=config.SERIALIZATION.MAX_DEPTH.as_int(),
+        warn_depth=config.SERIALIZATION.WARN_DEPTH.as_int(),
+        max_objects=config.SERIALIZATION.MAX_OBJECTS.as_int(),
+        detect_cycles=config.SERIALIZATION.DETECT_CYCLES,
+        fallback_on_error=config.SERIALIZATION.FALLBACK_ON_ERROR,
+        use_orjson=config.SERIALIZATION.USE_ORJSON,
+    )
+
+    serializer = providers.Singleton(
+        ItemSerializer,
+        config=serialization_config,
+    )
+    logging_strategy = providers.Singleton(
+        StandardLoggingStrategy,
+        serializer=serializer,
+    )
     tracing_strategy = providers.Singleton(OpentelemetryTracingStrategy)
     metrics_strategy = providers.Singleton(OpentelemetryMetricsStrategy)
 

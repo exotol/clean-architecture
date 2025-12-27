@@ -67,3 +67,13 @@ class OTLPConfig(BaseModel):
     endpoint: str
     service_name: str
     insecure: bool
+
+
+class SerializationConfig(BaseModel):
+    """Configuration for serializer behavior."""
+    max_depth: int = 500
+    warn_depth: int = 100
+    max_objects: int = 100_000
+    detect_cycles: bool = True
+    fallback_on_error: bool = True
+    use_orjson: bool = True  # главный флаг
