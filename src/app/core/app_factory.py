@@ -16,6 +16,7 @@ from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
+from app.infrastructure.observability.profiling import ProfilingMiddleware
 from app.presentation.api.application_api import create_main_router
 from app.presentation.api.exception_handlers import (
     business_error_handler,
@@ -23,7 +24,7 @@ from app.presentation.api.exception_handlers import (
     infra_error_handler,
     request_validation_handler,
 )
-from app.utils.configs import SecurityConfig
+from app.utils.configs import SecurityConfig, ProfilingConfig
 from app.utils.configs import load_settings
 from app.utils.serializer import AdvORJSONResponse
 
@@ -32,8 +33,11 @@ def create_middleware_list(
     security_config: SecurityConfig = Provide[
         AppContainer.infra_container.security_config
     ],
+    profiling_config: ProfilingConfig = Provide[
+        AppContainer.infra_container.profiling_config
+    ]
 ) -> list[Middleware]:
-    return [
+    middleware_list = [
         Middleware(
             CorrelationIdMiddleware,
             header_name=TRACE_ID,
@@ -51,6 +55,13 @@ def create_middleware_list(
             allow_headers=security_config.cors_allow_headers,
         ),
     ]
+    if profiling_config.enabled:
+        middleware_list.append(Middleware(
+            ProfilingMiddleware,
+            config=profiling_config
+        ))
+
+    return middleware_list
 
 
 def add_exception_handlers(app: FastAPI) -> None:

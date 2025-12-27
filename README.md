@@ -201,4 +201,22 @@ make run.load ARGS="EvaStressUser --headless -u 10 -r 2 -t 30s"
 alias uv='UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV uv'
 ```
 
-1.
+
+Команда	Описание
+make profile.install	Установить py-spy
+make profile.record PID=<pid>	Записать flame graph (SVG)
+make profile.top PID=<pid>	Мониторинг в реальном времени
+make profile.dump PID=<pid>	Дамп текущего call stack
+make profile.speedscope PID=<pid>	Запись для speedscope.app
+Использование:
+
+# 1. Установить py-spy (требует sudo для attach)
+make profile.install
+# 2. Запустить приложение
+python src/app/main.py &
+PID=$!  # или получить через ps aux | grep python
+# 3. Записать профиль (30 секунд по умолчанию)
+make profile.record PID=$PID
+# Или с кастомной длительностью
+make profile.record PID=$PID DURATION=60
+# 4. Открыть profile.svg в браузере

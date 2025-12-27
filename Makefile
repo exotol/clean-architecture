@@ -110,3 +110,22 @@ run.load:
 	@echo "Запуск нагрузочного тестирования (Locust)"
 	# Запуск Locust. Можно передать параметры через ARGS, например: make run.load ARGS="--headless -u 10 -r 2 -t 30s"
 	uv run --active locust -f tests/performance/locustfile.py $(ARGS)
+
+
+profile.view:
+	@echo "Просмотр последнего профиля в snakeviz"
+	@if [ -z "$$(ls -A profiles/*.prof 2>/dev/null)" ]; then echo "Нет профилей в profiles/"; exit 1; fi
+	snakeviz $$(ls -t profiles/*.prof | head -1)
+
+profile.clean:
+	@echo "Удаление всех профилей"
+	rm -rf profiles/*.prof
+	@echo "Профили удалены"
+
+profile.speedscope.view:
+	@echo "Конвертация последнего профиля в speedscope формат"
+	@if [ -z "$$(ls -A profiles/*.prof 2>/dev/null)" ]; then echo "Нет профилей в profiles/"; exit 1; fi
+	@LATEST=$$(ls -t profiles/*.prof | head -1); \
+	python3 scripts/prof_to_speedscope.py "$$LATEST"
+
+

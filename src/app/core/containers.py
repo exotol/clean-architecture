@@ -13,6 +13,7 @@ from app.infrastructure.persistence.repositories.search_repository import (
 from app.utils.configs import LoggerConfig
 from app.utils.configs import MetricsConfig
 from app.utils.configs import OTLPConfig
+from app.utils.configs import ProfilingConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import SerializationConfig
 from app.utils.configs import ServerConfig
@@ -81,6 +82,15 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         ItemSerializer,
         config=serialization_config,
     )
+
+    profiling_config = providers.Singleton(
+        ProfilingConfig,
+        enabled=config.PROFILING.ENABLED,
+        output_dir=config.PROFILING.OUTPUT_DIR,
+        sort_by=config.PROFILING.SORT_BY,
+        top_n=config.PROFILING.TOP_N.as_int(),
+    )
+
     logging_strategy = providers.Singleton(
         StandardLoggingStrategy,
         serializer=serializer,
