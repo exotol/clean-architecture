@@ -128,4 +128,48 @@ profile.speedscope.view:
 	@LATEST=$$(ls -t profiles/*.prof | head -1); \
 	python3 scripts/prof_to_speedscope.py "$$LATEST"
 
+##########################
+# Docker
+##########################
+
+DOCKER_IMAGE ?= eva
+DOCKER_TAG ?= latest
+
+docker.build:
+	@echo "Сборка Docker образа $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	docker build -f docker/Dockerfile -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+docker.build.no-cache:
+	@echo "Сборка Docker образа без кеша"
+	docker build -f docker/Dockerfile -t $(DOCKER_IMAGE):$(DOCKER_TAG) --no-cache .
+
+docker.run:
+	@echo "Запуск контейнера $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	docker run --rm -p 8000:8000 --name eva-app $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+docker.run.detached:
+	@echo "Запуск контейнера в фоновом режиме"
+	docker run -d -p 8000:8000 --name eva-app $(DOCKER_IMAGE):$(DOCKER_TAG)
+	@echo "Контейнер запущен. Остановить: docker stop eva-app"
+
+docker.stop:
+	@echo "Остановка контейнера"
+	docker stop eva-app || true
+	docker rm eva-app || true
+
+docker.logs:
+	@echo "Логи контейнера"
+	docker logs -f eva-app
+
+docker.shell:
+	@echo "Запуск shell в контейнере"
+	docker run --rm -it $(DOCKER_IMAGE):$(DOCKER_TAG) /bin/bash
+
+docker.size:
+	@echo "Размер Docker образа"
+	docker images $(DOCKER_IMAGE):$(DOCKER_TAG) --format "{{.Repository}}:{{.Tag}} - {{.Size}}"
+
+docker.clean:
+	@echo "Удаление Docker образа"
+	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 

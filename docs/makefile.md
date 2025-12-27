@@ -154,6 +154,39 @@ make profile.clean
 alias uv='UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV uv'
 ```
 
+## Docker
+
+| Команда | Описание |
+|---------|----------|
+| `make docker.build` | Сборка Docker образа |
+| `make docker.build.no-cache` | Сборка без кеша |
+| `make docker.run` | Запуск контейнера |
+| `make docker.run.detached` | Запуск в фоновом режиме |
+| `make docker.stop` | Остановка контейнера |
+| `make docker.logs` | Просмотр логов |
+| `make docker.shell` | Shell в контейнере |
+| `make docker.size` | Размер образа |
+| `make docker.clean` | Удаление образа |
+
+**Переменные:**
+- `DOCKER_IMAGE` — имя образа (default: `eva`)
+- `DOCKER_TAG` — тег (default: `latest`)
+
+**Примеры:**
+```bash
+# Сборка с тегом версии
+make docker.build DOCKER_TAG=v1.0.0
+
+# Запуск в фоне
+make docker.run.detached
+
+# Проверка размера
+make docker.size
+```
+
+Подробнее: [docs/docker.md](docker.md)
+
 ## Следующие шаги
 
+- [Docker](docker.md) — подробности о Docker
 - [Configuration](configuration.md) — настройки приложения

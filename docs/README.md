@@ -11,6 +11,7 @@ Comprehensive documentation for the EVA project - a Clean Architecture Python ap
 | [Project Structure](structure.md) | Directory layout and file organization |
 | [Testing](testing.md) | Test structure, approach, and execution |
 | [Profiling](profiling.md) | Performance profiling and optimization tools |
+| [Docker](docker.md) | Docker build, optimizations, and deployment |
 | [Makefile Commands](makefile.md) | All available automation commands |
 | [Configuration](configuration.md) | Settings and environment configuration |
 
