@@ -234,7 +234,7 @@ def monitor(
         )
 
     return cast(
-        "Callable[[Callable[P, R] | "
-        "Callable[P, Coroutine[Any, Any, R]]], Any]",
+        "Callable[[Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]], Any]",
         decorator,
     )
+
