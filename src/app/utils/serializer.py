@@ -62,7 +62,7 @@ class ItemSerializer:
                 serialized = orjson.loads(
                     orjson.dumps(
                         obj,
-                        default=self._orjson_default,
+                        default=self.orjson_default,
                         option=orjson.OPT_SERIALIZE_NUMPY,
                     )
                 )
@@ -79,7 +79,8 @@ class ItemSerializer:
 
         return self._serialize_iterative(obj)
 
-    def _orjson_default(self, obj: Any) -> Any:
+    @staticmethod
+    def orjson_default(obj: Any) -> Any:
         """Custom handler for orjson for types it doesn't support."""
         if isinstance(obj, BaseModel):
             return obj.model_dump(mode="json")
@@ -95,6 +96,10 @@ class ItemSerializer:
 
         if hasattr(obj, "hex"):
             return obj.hex()
+
+        # Skip callable objects (functions, methods, mocks) to avoid issues
+        if callable(obj):
+            return f"<{type(obj).__name__}>"
 
         if hasattr(obj, "__dict__"):
             return obj.__dict__
@@ -253,36 +258,13 @@ class AdvORJSONResponse(JSONResponse):
         try:
             return orjson.dumps(
                 obj,
-                default=cls._orjson_default,
+                default=ItemSerializer.orjson_default,
                 option=orjson.OPT_SERIALIZE_NUMPY,
             )
         except (TypeError, ValueError, RecursionError):
             # Fallback: encode string as bytes
             return orjson.dumps(str(obj))
 
-    @staticmethod
-    def _orjson_default(obj: Any) -> Any:
-        """Custom handler for orjson for types it doesn't support."""
-        if isinstance(obj, BaseModel):
-            return obj.model_dump(mode="json")
-
-        if is_dataclass(obj) and not isinstance(obj, type):
-            return asdict(obj)
-
-        if isinstance(obj, (set, frozenset)):
-            return list(obj)
-
-        if hasattr(obj, "isoformat"):
-            return obj.isoformat()
-
-        if hasattr(obj, "hex"):
-            return obj.hex()
-
-        if hasattr(obj, "__dict__"):
-            return obj.__dict__
-
-        # Final fallback for orjson - convert to string
-        return str(obj)
 
 
 
