@@ -50,15 +50,14 @@ An implementation of Clean Architecture principles. Feel free to use it!
 
 
 * Мониторинг 
-  * простой декоратор
-  * типизированный декоратор
-  * opentelemetry
-    * логирование 
-    * логирование + id
-    * логирование + metrics
   * Обработка разных видов исключений
 * Отладка проброса исключений
-
+* 3 либы для логирования
+  * standard logger
+  * logure
+  * structure logger
+* линтеры
+* Обновить документацию
 
 
 ## Архитектура проекта
@@ -202,3 +201,4 @@ make run.load ARGS="EvaStressUser --headless -u 10 -r 2 -t 30s"
 alias uv='UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV uv'
 ```
 
+1.

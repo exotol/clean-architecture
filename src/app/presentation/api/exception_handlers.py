@@ -218,7 +218,7 @@ def request_validation_handler(
     problem = ProblemDetail(
         urn_type_error=Reasons.validation_error.urn_type_error,
         title=Reasons.validation_error.title,
-        status=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
         reason=Reasons.validation_error.code,
         detail=Reasons.validation_error.message,
         instance=request.url.path,
@@ -227,6 +227,6 @@ def request_validation_handler(
     )
 
     return JSONResponse(
-        status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=problem.model_dump(by_alias=True, exclude_none=True),
     )
