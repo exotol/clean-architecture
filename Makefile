@@ -1,17 +1,15 @@
 PYTHON_VERSION = 3.12
-PYTHON_VENV = eva
-#ROOT_PATH = .
+VENV_PATH = /home/v0id/main/01_projects/venv/eva
 # Указываем, что используем bash (по умолчанию make часто использует sh)
 SHELL := /bin/bash
-.PHONY: install.dep.python install.uv install.python create.venv
+.PHONY: install.dep.python install.uv venv.create sync
 
 install.dep.python:
-	@echo установить зависимости для сборки питона
+	@echo "Установить зависимости для сборки питона"
 	sudo apt update
 	sudo apt install -y make build-essential libssl-dev zlib1g-dev \
-libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev \
-libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev git
-
+	libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev \
+	libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev git
 
 
 install.pyenv:
@@ -51,34 +49,71 @@ install.uv:
 	@echo "Установка uv"
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 
+install.direnv:
+	@echo "Установка direnv в ~/.local/bin"
+	@mkdir -p ~/.local/bin
+	export bin_path=~/.local/bin && curl -sfL https://direnv.net/install.sh | bash
+	@echo "-----------------------------------------------------------"
+	@echo "direnv установлен. Убедитесь, что ~/.local/bin в PATH"
+	@echo "Выполните 'make setup.direnv' для настройки хука bash"
+
+setup.direnv:
+	@echo "Настройка direnv hook в ~/.bashrc"
+	@grep -q 'eval "$$(direnv hook bash)"' ~/.bashrc || echo 'eval "$$(direnv hook bash)"' >> ~/.bashrc
+	@echo "Настройка отображения имени окружения в prompt"
+	@grep -q 'show_virtual_env' ~/.bashrc || cat >> ~/.bashrc << 'EOF'
+
+	# Показывать имя виртуального окружения в prompt (для direnv)
+	# Проверка VIRTUAL_ENV_DISABLE_PROMPT предотвращает дублирование в IDE (PyCharm)
+	show_virtual_env() {
+		if [[ -n "$$VIRTUAL_ENV" && -z "$$VIRTUAL_ENV_DISABLE_PROMPT" ]]; then
+			echo "$$(basename "$$VIRTUAL_ENV") "
+		fi
+	}
+	export -f show_virtual_env
+	PS1='$$(show_virtual_env)'"$$PS1"
+	EOF
+	@echo "Разрешение .envrc в проекте"
+	direnv allow
+	@echo "-----------------------------------------------------------"
+	@echo "Готово! Выполните 'source ~/.bashrc' или откройте новый терминал"
+
+venv.create:
+	@echo "Создать виртуальное окружение в $(VENV_PATH)"
+	uv venv $(VENV_PATH) --python $(PYTHON_VERSION)
+	@echo "Окружение создано. Выполните 'direnv allow' для автоактивации."
+
+sync.uv:
+	@echo "Синхронизация зависимостей"
+	uv sync
+
 init.uv:
 	@echo "Инициализация проекта (если нет pyproject.toml)"
 	uv init
-	#uv add --active <libs>
 
 ruff.check:
 	@echo "Запустить проверку RUFF качества кода"
-	uv run --active ruff check . --fix --unsafe-fixes
+	uv run ruff check . --fix --unsafe-fixes
 
 ruff.format:
 	@echo "Запустить форматирование с помощью ruff"
-	uv run --active ruff format .
+	uv run ruff format .
 
 mypy.check:
 	@echo "Запустить проверку MYPY типизации"
-	uv run --active mypy --install-types --non-interactive .
+	uv run mypy --install-types --non-interactive .
 
 install.pre-commit:
 	@echo "Установить сконфигрурированные пре-коммит хуки"
-	uv run --active pre-commit install
+	uv run pre-commit install
 
 remove.pre-commit:
 	@echo "Удалить сконфигрурированные пре-коммит хуки"
-	uv run --active pre-commit uninstall
+	uv run pre-commit uninstall
 
 wemake.run:
 	@echo "Запуск wemake"
-	uv run --active flake8 . --select=WPS
+	uv run flake8 . --select=WPS
 
 
 
@@ -109,7 +144,7 @@ run.pytest:
 run.load:
 	@echo "Запуск нагрузочного тестирования (Locust)"
 	# Запуск Locust. Можно передать параметры через ARGS, например: make run.load ARGS="--headless -u 10 -r 2 -t 30s"
-	uv run --active locust -f tests/performance/locustfile.py $(ARGS)
+	uv run locust -f tests/performance/locustfile.py $(ARGS)
 
 
 profile.view:

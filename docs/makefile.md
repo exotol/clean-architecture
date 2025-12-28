@@ -4,17 +4,70 @@
 
 ## Окружение и установка
 
-### Python и pyenv
+### uv + direnv
+
+Проект использует **uv** для управления зависимостями и **direnv** для автоактивации окружения.
 
 | Команда | Описание |
 |---------|----------|
 | `make install.dep.python` | Установить системные зависимости для сборки Python |
+| `make install.uv` | Установить uv (package manager) |
+| `make install.direnv` | Установить direnv глобально в `~/.local/bin` |
+| `make setup.direnv` | Настроить хук bash + разрешить `.envrc` |
+| `make venv.create` | Создать виртуальное окружение в `/home/v0id/main/01_projects/venv/eva` |
+| `make sync.uv` | Синхронизировать зависимости |
+| `make init.uv` | Инициализировать проект с uv |
+
+**Пример: полная установка окружения (на новой машине)**
+```bash
+make install.dep.python    # Системные зависимости
+make install.uv            # Установить uv
+make install.direnv        # Установить direnv
+make setup.direnv          # Настроить bash + разрешить .envrc
+source ~/.bashrc           # Применить изменения
+make venv.create           # Создать окружение
+make sync.uv               # Установить зависимости
+```
+
+### Как работает автоактивация
+
+1. **direnv** автоматически загружает `.envrc` при входе в директорию проекта
+2. `.envrc` устанавливает `UV_PROJECT_ENVIRONMENT` — uv использует внешнее окружение
+3. `VIRTUAL_ENV` + `PATH` активируют окружение для прямого доступа к `python`/`pip`
+4. В prompt отображается `(eva)` при активном окружении
+
+**Файл `.envrc`:**
+```bash
+export UV_PROJECT_ENVIRONMENT="/home/v0id/main/01_projects/venv/eva"
+export VIRTUAL_ENV="/home/v0id/main/01_projects/venv/eva"
+export PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Отключаем prompt в IDE (PyCharm сам показывает имя окружения)
+if [[ -n "$TERMINAL_EMULATOR" ]]; then
+    export VIRTUAL_ENV_DISABLE_PROMPT=1
+fi
+```
+
+> [!NOTE]
+> `.envrc` добавлен в `.gitignore`, так как содержит локальные пути.
+> Каждый разработчик создаёт свой `.envrc` с правильным путём к окружению.
+
+---
+
+### pyenv (deprecated)
+
+> [!WARNING]
+> **Deprecated**: pyenv больше не используется как основной инструмент.
+> Используйте **uv + direnv** (см. выше). Команды оставлены для совместимости.
+
+| Команда | Описание |
+|---------|----------|
 | `make install.pyenv` | Установить pyenv |
 | `make install.python` | Установить Python через pyenv |
-| `make create.venv` | Создать виртуальное окружение |
-| `make remove.venv` | Удалить виртуальное окружение |
+| `make create.venv` | Создать виртуальное окружение pyenv |
+| `make remove.venv` | Удалить виртуальное окружение pyenv |
 
-**Пример: полная установка окружения**
+**Пример (deprecated):**
 ```bash
 make install.dep.python
 make install.pyenv
@@ -22,13 +75,6 @@ source ~/.bashrc
 make install.python
 make create.venv
 ```
-
-### uv (package manager)
-
-| Команда | Описание |
-|---------|----------|
-| `make install.uv` | Установить uv |
-| `make init.uv` | Инициализировать проект с uv |
 
 ## Линтеры и форматтеры
 
@@ -140,19 +186,11 @@ make profile.clean
 ## Переменные
 
 | Переменная | Default | Описание |
-|------------|---------|----------|
+|------------|-------|----------|
 | `PYTHON_VERSION` | 3.12 | Версия Python |
-| `PYTHON_VENV` | eva | Имя виртуального окружения |
+| `VENV_PATH` | `eva` | Путь к виртуальному окружению |
 | `ARGS` | (empty) | Аргументы для команд |
 
-## uv + pyenv интеграция
-
-Чтобы uv использовал окружение pyenv:
-
-```bash
-# Добавить в .bashrc
-alias uv='UV_PROJECT_ENVIRONMENT=$VIRTUAL_ENV uv'
-```
 
 ## Docker
 
