@@ -35,15 +35,15 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         log_access=config.GRANIAN.SERVER.LOG_ACCESS,
     )
 
-    logger_config = providers.Singleton(
-        LoggerConfig,
-        level=config.LOGGING.LEVEL,
-        format=config.LOGGING.FORMAT,
-        path=config.LOGGING.PATH,
-        rotation=config.LOGGING.ROTATION,
-        retention=config.LOGGING.RETENTION,
-        loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
-    )
+    # logger_config = providers.Singleton(
+    #     LoggerConfig,
+    #     level=config.LOGGING.LEVEL,
+    #     format=config.LOGGING.FORMAT,
+    #     path=config.LOGGING.PATH,
+    #     rotation=config.LOGGING.ROTATION,
+    #     retention=config.LOGGING.RETENTION,
+    #     loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
+    # )
 
     metrics_config = providers.Singleton(
         MetricsConfig,
@@ -59,14 +59,14 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         cors_allow_headers=config.SECURITY.CORS.ALLOW.HEADERS,
         trusted_hosts=config.SECURITY.TRUSTED.HOSTS
     )
-
-    otlp_config = providers.Singleton(
-        OTLPConfig,
-        enabled=config.TRACING.OTLP.ENABLED,
-        endpoint=config.TRACING.OTLP.ENDPOINT,
-        service_name=config.TRACING.OTLP.SERVICE_NAME,
-        insecure=config.TRACING.OTLP.INSECURE
-    )
+    #
+    # otlp_config = providers.Singleton(
+    #     OTLPConfig,
+    #     enabled=config.TRACING.OTLP.ENABLED,
+    #     endpoint=config.TRACING.OTLP.ENDPOINT,
+    #     service_name=config.TRACING.OTLP.SERVICE_NAME,
+    #     insecure=config.TRACING.OTLP.INSECURE
+    # )
 
     serialization_config = providers.Singleton(
         SerializationConfig,

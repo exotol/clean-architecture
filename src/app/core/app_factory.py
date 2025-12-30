@@ -93,9 +93,6 @@ def create_app() -> FastAPI:
     container: AppContainer = AppContainer()
     container.infra_container.config.from_dict(load_settings().as_dict())
 
-    logger_config = container.infra_container.logger_config()
-    otlp_config = container.infra_container.otlp_config()
-
     setup_logging()
     setup_metrics()
 

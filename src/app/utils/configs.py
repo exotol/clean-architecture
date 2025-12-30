@@ -1,7 +1,8 @@
 from enum import StrEnum
 
 from dynaconf import Dynaconf
-from orendix import Component, Value
+from orendix import Component, Value, Configuration
+from orendix.annotations import ConfigurationProperties
 from pydantic import BaseModel
 
 from app.core.constants import PATH_TO_ENVS
@@ -62,12 +63,13 @@ class SecurityConfig(BaseModel):
     cors_allow_headers: list[str]
     trusted_hosts: list[str]
 
+@ConfigurationProperties(prefix="TRACING.OTLP")
 @Component(name="otlp_config")
 class OTLPConfig(BaseModel):
-    enabled: bool = Value("${TRACING.OTLP.ENABLED}")
-    endpoint: str = Value("${TRACING.OTLP.ENDPOINT}")
-    service_name: str = Value("${TRACING.OTLP.SERVICE_NAME}")
-    insecure: bool = Value("${TRACING.OTLP.INSECURE}")
+    enabled: bool
+    endpoint: str
+    service_name: str
+    insecure: bool
 
 
 class SerializationConfig(BaseModel):

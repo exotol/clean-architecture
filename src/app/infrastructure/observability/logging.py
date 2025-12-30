@@ -69,6 +69,7 @@ def record_patcher(record: logging.LogRecord) -> None:
         record["extra"]["trace_id"] = format(span_context.trace_id, "032x")
         record["extra"]["span_id"] = format(span_context.span_id, "016x")
 
+
 @Autowired(required=True)
 def setup_logging(
     otlp_config: OTLPConfig = Qualifier("otlp_config"),
