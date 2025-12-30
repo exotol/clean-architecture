@@ -1,9 +1,10 @@
 from enum import StrEnum
 
 from dynaconf import Dynaconf
+from granian.constants import Interfaces
 from orendix import Component, Value, Configuration
 from orendix.annotations import ConfigurationProperties
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.constants import PATH_TO_ENVS
 from app.core.constants import PATH_TO_SECRETS
@@ -45,15 +46,19 @@ class MetricsConfig(BaseModel):
     service_name: str
 
 
+@ConfigurationProperties(prefix="GRANIAN.SERVER")
+@Component("server_config")
 class ServerConfig(BaseModel):
-    host: str
+    host: str = Field(..., serialization_alias="address")
     port: int
     workers: int
     reload: bool
-    target_run: str
+    target_run: str = Field(..., serialization_alias="target")
     factory: bool
     log_level: str
     log_access: bool
+    interface: Interfaces
+    log_dictconfig: dict
 
 
 class SecurityConfig(BaseModel):
