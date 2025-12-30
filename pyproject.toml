@@ -19,6 +19,7 @@ dependencies = [
     "orjson>=3.11.5",
     "snakeviz>=2.2.2",
     "speedscope>=1.0",
+    "orendix",
 ]
 
 [dependency-groups]
@@ -346,5 +347,8 @@ docstring_style = "google"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+orendix = { path = "/home/v0id/main/01_projects/research/orendix", editable = true }
 
 

@@ -1,6 +1,7 @@
 from enum import StrEnum
 
 from dynaconf import Dynaconf
+from orendix import Component, Value
 from pydantic import BaseModel
 
 from app.core.constants import PATH_TO_ENVS
@@ -28,14 +29,14 @@ class LogLevel(StrEnum):
     FATAL = "FATAL"
     NOTSET = "NOTSET"
 
-
+@Component(name="logger_config")
 class LoggerConfig(BaseModel):
-    level: LogLevel
-    format: str
-    path: str | None
-    rotation: str
-    retention: str
-    loggers_to_root: list[str]
+    level: LogLevel = Value("${LOGGING.LEVEL}")
+    format: str = Value("${LOGGING.FORMAT}")
+    path: str | None = Value("${LOGGING.PATH:None}")
+    rotation: str = Value("${LOGGING.ROTATION}")
+    retention: str = Value("${LOGGING.RETENTION}")
+    loggers_to_root: list[str] = Value("${LOGGING.LOGGERS_TO_ROOT}")
 
 
 class MetricsConfig(BaseModel):
@@ -61,12 +62,12 @@ class SecurityConfig(BaseModel):
     cors_allow_headers: list[str]
     trusted_hosts: list[str]
 
-
+@Component(name="otlp_config")
 class OTLPConfig(BaseModel):
-    enabled: bool
-    endpoint: str
-    service_name: str
-    insecure: bool
+    enabled: bool = Value("${TRACING.OTLP.ENABLED}")
+    endpoint: str = Value("${TRACING.OTLP.ENDPOINT}")
+    service_name: str = Value("${TRACING.OTLP.SERVICE_NAME}")
+    insecure: bool = Value("${TRACING.OTLP.INSECURE}")
 
 
 class SerializationConfig(BaseModel):

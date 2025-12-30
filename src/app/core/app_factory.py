@@ -96,7 +96,7 @@ def create_app() -> FastAPI:
     logger_config = container.infra_container.logger_config()
     otlp_config = container.infra_container.otlp_config()
 
-    setup_logging(logger_config=logger_config, otlp_config=otlp_config)
+    setup_logging()
     setup_metrics()
 
     app = FastAPI(

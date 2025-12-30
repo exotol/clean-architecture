@@ -1,3 +1,4 @@
+import orendix as o
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
 from granian.server import MPServer
@@ -15,18 +16,15 @@ def main(
     granian_server: MPServer | MTServer = Provide[
         ServerContainer.granian_server
     ],
-    logger_config: LoggerConfig = Provide[
-        ServerContainer.infra_container.logger_config
-    ],
-    otlp_config: OTLPConfig = Provide[
-        ServerContainer.infra_container.otlp_config
-    ],
 ) -> None:
-    setup_logging(logger_config=logger_config, otlp_config=otlp_config)
+    setup_logging()
     granian_server.serve()
 
 
 def init_server_container() -> None:
+    o_container = o.Container()
+    o_container.use_dynaconf(load_settings())
+
     container = ServerContainer()
     container.infra_container.config.from_dict(load_settings().as_dict())
 

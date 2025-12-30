@@ -12,6 +12,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+from orendix import Autowired, Qualifier
 
 from app.core.constants import OTLP_LOCAL_ENDPOINT
 
@@ -68,10 +69,10 @@ def record_patcher(record: logging.LogRecord) -> None:
         record["extra"]["trace_id"] = format(span_context.trace_id, "032x")
         record["extra"]["span_id"] = format(span_context.span_id, "016x")
 
-
+@Autowired(required=True)
 def setup_logging(
-    logger_config: LoggerConfig,
-    otlp_config: OTLPConfig,
+    otlp_config: OTLPConfig = Qualifier("otlp_config"),
+    logger_config: LoggerConfig = Qualifier("logger_config"),
 ) -> None:
     # 0. Настраиваем OpenTelemetry
     # Проверяем, не установлен ли уже провайдер

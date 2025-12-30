@@ -347,6 +347,7 @@ dependencies = [
     { name = "opentelemetry-exporter-prometheus" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-sdk" },
+    { name = "orendix" },
     { name = "orjson" },
     { name = "snakeviz" },
     { name = "speedscope" },
@@ -381,6 +382,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-prometheus" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.45.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.24.0" },
+    { name = "orendix", editable = "/home/v0id/main/01_projects/research/orendix"},
     { name = "orjson", specifier = ">=3.11.5" },
     { name = "snakeviz", specifier = ">=2.2.2" },
     { name = "speedscope", specifier = ">=1.0" },
@@ -1311,6 +1313,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/50/fc/c47bb04a1d8a941a4
 wheels = [
     { url = "https://files.pythonhosted.org/packages/16/5c/d3f1733665f7cd582ef0842fb1d2ed0bc1fba10875160593342d22bba375/opentelemetry_util_http-0.60b1-py3-none-any.whl", hash = "sha256:66381ba28550c91bee14dcba8979ace443444af1ed609226634596b4b0faf199", size = 8947, upload-time = "2025-12-11T13:36:37.151Z" },
 ]
+
+[[package]]
+name = "orendix"
+version = "0.1.0"
+source = { editable = "../orendix" }
 
 [[package]]
 name = "orjson"
