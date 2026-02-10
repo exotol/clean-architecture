@@ -15,10 +15,10 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 
 from app.core.constants import OTLP_LOCAL_ENDPOINT
 
-if TYPE_CHECKING:
-    from types import FrameType
-
-    from app.utils.configs import LoggerConfig
+if TYPE_CHECKING:  # pragma: no cover
+    from types import FrameType  # pragma: no cover
+    
+    from app.utils.configs import LoggerConfig  # pragma: no cover
     from app.utils.configs import OTLPConfig
 
 

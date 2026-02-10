@@ -10,10 +10,12 @@ class SearchServiceEntity(BaseModel):
 
     query: str
     mock_return: list[Document] = Field(default_factory=list)
+    mock_side_effect: Exception | None = None
 
 
 class SearchServiceExpected(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    count: int
+    count: int = 0
     results: list[Document] = Field(default_factory=list)
+    expected_exception: type[Exception] | None = None

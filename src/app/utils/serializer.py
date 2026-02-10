@@ -95,7 +95,10 @@ class ItemSerializer:
             return obj.isoformat()
 
         if hasattr(obj, "hex"):
-            return obj.hex()
+            attr = obj.hex
+            if callable(attr):
+                return attr()
+            return attr
 
         # Skip callable objects (functions, methods, mocks) to avoid issues
         if callable(obj):
@@ -220,7 +223,10 @@ class ItemSerializer:
             if hasattr(obj, "isoformat"):
                 return obj.isoformat()
             if hasattr(obj, "hex"):
-                return obj.hex()
+                attr = obj.hex
+                if callable(attr):
+                    return attr()
+                return attr
             if hasattr(obj, "__dict__"):
                 return obj.__dict__
             return str(obj)

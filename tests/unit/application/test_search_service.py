@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock
-
 import pytest
+from app.core.exceptions import InfrastructureError
 
 from app.application.services.search_service import SearchService
 from app.domain.entities.document import Document
@@ -68,3 +68,40 @@ async def test_search_success(
         f"Test failed, actual results = {actual_results}, "
         f"but expected results were = {expected.results}"
     )
+
+
+@pytest.mark.anyio()
+@pytest.mark.parametrize(
+    ("entity", "expected"),
+    [
+        pytest.param(
+            SearchServiceEntity(
+                query="error_case",
+                mock_side_effect=InfrastructureError(),
+            ),
+            SearchServiceExpected(expected_exception=InfrastructureError),
+            id="error_infrastructure",
+        ),
+        pytest.param(
+            SearchServiceEntity(
+                query="error_generic",
+                mock_side_effect=RuntimeError("Some error"),
+            ),
+            SearchServiceExpected(expected_exception=RuntimeError),
+            id="error_generic",
+        ),
+    ],
+)
+async def test_search_error(
+    search_service: SearchService,
+    mock_repository: AsyncMock,
+    entity: SearchServiceEntity,
+    expected: SearchServiceExpected,
+) -> None:
+    # Arrange
+    mock_repository.search.side_effect = entity.mock_side_effect
+
+    # Act
+    with pytest.raises(expected.expected_exception):
+        await search_service.search(query=entity.query)
+

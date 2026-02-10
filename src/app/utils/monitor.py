@@ -16,13 +16,13 @@ from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from collections.abc import Coroutine
+if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Callable  # pragma: no cover
+    from collections.abc import Coroutine  # pragma: no cover
 
-    from app.domain.interfaces.observability import ILoggingStrategy
-    from app.domain.interfaces.observability import IMetricsStrategy
-    from app.domain.interfaces.observability import ITracingStrategy
+    from app.domain.interfaces.observability import ILoggingStrategy  # pragma: no cover
+    from app.domain.interfaces.observability import IMetricsStrategy  # pragma: no cover
+    from app.domain.interfaces.observability import ITracingStrategy  # pragma: no cover
 
 
 # --- Typing ---

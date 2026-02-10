@@ -141,6 +141,10 @@ run.pytest:
 	@echo "Запуск pytest"
 	pytest tests
 
+run.unit.cov:
+	@echo "Запуск unit-тестов с проверкой покрытия всего сервиса"
+	PYTHONPATH=src uv run pytest --cov=src/ --cov-report=term-missing tests/unit
+
 run.load:
 	@echo "Запуск нагрузочного тестирования (Locust)"
 	# Запуск Locust. Можно передать параметры через ARGS, например: make run.load ARGS="--headless -u 10 -r 2 -t 30s"
