@@ -1,14 +1,12 @@
-"""cProfile middleware for FastAPI."""
 from __future__ import annotations
-
 import cProfile
 import io
+import logging
 import pstats
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request
@@ -18,6 +16,8 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
     from app.utils.configs import ProfilingConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ProfilingMiddleware(BaseHTTPMiddleware):
@@ -32,9 +32,7 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         self.config = config
         self._ensure_output_dir()
         logger.info(
-            "Profiling enabled. Profiles will be saved to: {output}".format(
-                output=config.output_dir
-            )
+            f"Profiling enabled. Profiles will be saved to: {config.output_dir}"
         )
 
     def _ensure_output_dir(self) -> None:

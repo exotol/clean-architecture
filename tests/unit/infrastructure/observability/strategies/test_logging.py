@@ -16,8 +16,9 @@ from tests.schemas.unit.infrastructure.observability.strategies.logging import (
 
 @pytest.fixture
 def mock_logger():
+    # Patch the logger in the module
     with patch(
-        "app.infrastructure.observability.strategies.logging.loguru_logger"
+        "app.infrastructure.observability.strategies.logging.logger"
     ) as mock:
         yield mock
 
@@ -40,11 +41,11 @@ def mock_serializer() -> MagicMock:
                 use_log_args=True,
             ),
             LogStartExpected(
-                bind_called=True,
+                bind_called=True, # In new strat, this means extra context is built
                 args_in_bind=True,
                 kwargs_in_bind=True,
                 event_in_bind="TEST_EVENT",
-                info_called_with="{}_SEND",
+                info_called_with="TEST_EVENT_SEND",
             ),
             id="log_start_with_args",
         ),
@@ -60,7 +61,7 @@ def mock_serializer() -> MagicMock:
                 args_in_bind=False,
                 kwargs_in_bind=False,
                 event_in_bind="TEST_EVENT",
-                info_called_with="{}_SEND",
+                info_called_with="TEST_EVENT_SEND",
             ),
             id="log_start_without_args",
         ),
@@ -74,51 +75,29 @@ def test_log_start(
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
 
-    strategy.log_start(
+    context = strategy.log_start(
         entity.event_name,
         entity.args,
         entity.kwargs,
         use_log_args=entity.use_log_args,
     )
 
-    if expected.bind_called:
-        assert mock_logger.bind.called, (
-            f"Expected logger.bind to be called, but it was not. "
-            f"expected={expected.bind_called}, actual={mock_logger.bind.called}"
-        )
+    # Verify return value IS the context dict
+    assert isinstance(context, dict)
+    assert context["event"] == entity.event_name
+    
+    if expected.args_in_bind:
+        assert "args" in context
+    else:
+        assert "args" not in context
+        
+    if expected.kwargs_in_bind:
+        assert "kwargs" in context
+    else:
+        assert "kwargs" not in context
 
-        call_kwargs = mock_logger.bind.call_args[1]
-
-        assert call_kwargs["event"] == expected.event_in_bind, (
-            f"Expected event in bind context to match. "
-            f"expected={expected.event_in_bind}, actual={call_kwargs.get('event')}"
-        )
-
-        if expected.args_in_bind:
-            assert "args" in call_kwargs, (
-                f"Expected 'args' in bind context. "
-                f"expected=True, actual={'args' in call_kwargs}"
-            )
-        else:
-            assert "args" not in call_kwargs, (
-                f"Expected 'args' NOT in bind context. "
-                f"expected=False, actual={'args' in call_kwargs}"
-            )
-
-        if expected.kwargs_in_bind:
-            assert "kwargs" in call_kwargs, (
-                f"Expected 'kwargs' in bind context. "
-                f"expected=True, actual={'kwargs' in call_kwargs}"
-            )
-        else:
-            assert "kwargs" not in call_kwargs, (
-                f"Expected 'kwargs' NOT in bind context. "
-                f"expected=False, actual={'kwargs' in call_kwargs}"
-            )
-
-        mock_logger.bind.return_value.info.assert_called_with(
-            expected.info_called_with, entity.event_name
-        )
+    # Verify logger called with extra=context
+    mock_logger.info.assert_called_with(expected.info_called_with, extra=context)
 
 
 @pytest.mark.parametrize(
@@ -133,7 +112,7 @@ def test_log_start(
             LogSuccessExpected(
                 bind_called=True,
                 result_in_bind=True,
-                info_called_with="{}_SUCCESS",
+                info_called_with="TEST_EVENT_SUCCESS",
             ),
             id="log_success_with_result",
         ),
@@ -146,7 +125,7 @@ def test_log_start(
             LogSuccessExpected(
                 bind_called=False,
                 result_in_bind=False,
-                info_called_with="{}_SUCCESS",
+                info_called_with="TEST_EVENT_SUCCESS",
             ),
             id="log_success_without_result",
         ),
@@ -159,7 +138,9 @@ def test_log_success(
     expected: LogSuccessExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
-    context = mock_logger.bind.return_value
+    
+    # Simulate context passed from log_start
+    context = {"event": entity.event_name}
 
     strategy.log_success(
         entity.event_name,
@@ -168,25 +149,18 @@ def test_log_success(
         use_log_result=entity.use_log_result,
     )
 
-    if expected.bind_called:
-        assert context.bind.called, (
-            f"Expected context.bind to be called. "
-            f"expected={expected.bind_called}, actual={context.bind.called}"
-        )
-
-        if expected.result_in_bind:
-            call_kwargs = context.bind.call_args[1]
-            assert "result" in call_kwargs, (
-                f"Expected 'result' in bind context. "
-                f"expected=True, actual={'result' in call_kwargs}"
-            )
-
-        context.bind.return_value.info.assert_called_with(
-            expected.info_called_with, entity.event_name
-        )
+    # We expect logger.info to be called with extra=new_context
+    # Check if we modified context in place or created new one?
+    # Implementation created new context if adding result? No, it used passed context.
+    # Actually implementation checked if context is dict.
+    
+    if expected.result_in_bind:
+        assert "result" in context
     else:
-        # If bind not called, info called directly on context
-        context.info.assert_called_with(expected.info_called_with, entity.event_name)
+        # If we didn't add result, maybe it's not in context
+        assert "result" not in context
+
+    mock_logger.info.assert_called_with(expected.info_called_with, extra=context)
 
 
 @pytest.mark.parametrize(
@@ -198,7 +172,7 @@ def test_log_success(
                 exc=ValueError("test error"),
             ),
             LogErrorExpected(
-                exception_called_with="{}_ERROR",
+                exception_called_with="TEST_EVENT_ERROR",
             ),
             id="log_error",
         ),
@@ -211,10 +185,10 @@ def test_log_error(
     expected: LogErrorExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
-    context = mock_logger.bind.return_value
+    context = {"event": entity.event_name}
 
     strategy.log_error(entity.event_name, entity.exc, context)
 
-    context.exception.assert_called_with(
-        expected.exception_called_with, entity.event_name
+    mock_logger.error.assert_called_with(
+        expected.exception_called_with, exc_info=entity.exc, extra=context
     )

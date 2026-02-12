@@ -1,15 +1,17 @@
+import logging
 import uuid
 
 from fastapi import Request
 from fastapi import status as http_status
 from fastapi.responses import JSONResponse
-from loguru import logger
 
 from app.core.constants import NO_PARAMS
 from app.core.constants import TRACE_ID
 from app.core.constants import USER_ID
 from app.core.exceptions import ProblemDetail
 from app.core.exceptions import Reasons
+
+logger = logging.getLogger(__name__)
 
 
 def business_error_handler(
@@ -159,7 +161,7 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # 2. Логируем реальную ошибку (ДЛЯ РАЗРАБОТЧИКА)
     # exc_info=True запишет полный стек-трейс в логи
     logger.error(
-        "Unhandled exception (0)".format(),
+        "Unhandled exception (0)",
         exc_info=True,
         extra={"trace_id": trace_id, "exc_extra_info": str(exc)},
     )
@@ -203,8 +205,7 @@ def request_validation_handler(
 
     # Логируем как warning
     logger.warning(
-        "Validation error: {errors}",
-        errors=exc.errors(),
+        f"Validation error: {exc.errors()}",
         extra={"trace_id": trace_id},
     )
 
