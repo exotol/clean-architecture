@@ -58,25 +58,19 @@ async def test_search_endpoint_success(
     )
 
     data = response.json()
-    assert "hello" in data, (
+    assert "documents" in data, (
         f"Test failed, actual keys = {list(data.keys())}, "
-        f"but expected key 'hello' to be present"
-    )
-
-    inner_data = data["hello"]
-    assert "documents" in inner_data, (
-        f"Test failed, actual inner keys = {list(inner_data.keys())}, "
         f"but expected key 'documents' to be present"
     )
 
-    assert len(inner_data["documents"]) == 1, (
+    assert len(data["documents"]) == 1, (
         f"Test failed, actual document "
-        f"count = {len(inner_data['documents'])}, "
+        f"count = {len(data['documents'])}, "
         f"but expected count was = 1"
     )
 
     if expected.text_part:
-        first_doc = inner_data["documents"][0]
+        first_doc = data["documents"][0]
         assert expected.text_part in first_doc["text"], (
             f"Test failed, actual text = {first_doc['text']}, "
             f"but expected to contain = {expected.text_part}"
