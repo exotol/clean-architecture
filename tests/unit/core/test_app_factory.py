@@ -3,9 +3,12 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import anyio
 import pytest
 from starlette.middleware import Middleware
 
+from app.core import app_factory
+from app.core.app_factory import app_lifespan
 from app.core.app_factory import create_app
 from app.core.app_factory import create_middleware_list
 from app.infrastructure.middleware.rate_limit import RateLimitStore
@@ -140,3 +143,63 @@ def test_create_app() -> None:
         assert mock_app.state.container == mock_container, (
             "Expected container to be stored in app.state"
         )
+
+
+@pytest.mark.anyio
+async def test_app_lifespan_init_and_shutdown_resources() -> None:
+    # Arrange
+    mock_app = MagicMock()
+    mock_app.state = MagicMock()
+
+    mock_container = MagicMock()
+    mock_container.wire = MagicMock()
+    mock_container.unwire = MagicMock()
+
+    mock_infra = MagicMock()
+    init_result = anyio.lowlevel.checkpoint()
+    shutdown_result = anyio.lowlevel.checkpoint()
+    mock_infra.init_resources.return_value = init_result
+    mock_infra.shutdown_resources.return_value = shutdown_result
+    mock_container.infra_container.return_value = mock_infra
+
+    with patch("app.core.app_factory._ensure_observability") as mock_ensure:
+        mock_ensure.return_value = None
+
+        # Act
+        async with app_lifespan(mock_app, mock_container):
+            pass
+
+        # Assert
+        assert mock_container.wire.call_count == 1, (
+            f"Expected container.wire called once, got "
+            f"{mock_container.wire.call_count}"
+        )
+        assert mock_container.unwire.call_count == 1, (
+            f"Expected container.unwire called once, got "
+            f"{mock_container.unwire.call_count}"
+        )
+        assert mock_ensure.call_count == 1, (
+            f"Expected _ensure_observability called once, got "
+            f"{mock_ensure.call_count}"
+        )
+        mock_infra.init_resources.assert_called_once()
+        mock_infra.shutdown_resources.assert_called_once()
+
+
+def test_ensure_observability_tuple_execution() -> None:
+    # Arrange
+    logging_strategy = MagicMock()
+    tracing_strategy = MagicMock()
+    metrics_strategy = MagicMock()
+
+    # Act
+    result = app_factory._ensure_observability(
+        logging_strategy=logging_strategy,
+        tracing_strategy=tracing_strategy,
+        metrics_strategy=metrics_strategy,
+    )
+
+    # Assert
+    assert result is None, (
+        f"Expected None from _ensure_observability, got {result!r}"
+    )

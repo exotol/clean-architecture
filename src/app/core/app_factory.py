@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import anyio
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import partial
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
 
+import anyio
 from asgi_correlation_id import CorrelationIdMiddleware
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
@@ -19,9 +19,10 @@ from starlette.middleware import Middleware
 from app.core.constants import TRACE_ID
 from app.core.constants import VALIDATION_UUID_OFF
 from app.core.containers import AppContainer
-from app.core.types import ConfigFromDict
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
+from app.infrastructure.middleware.rate_limit import RateLimitMiddleware
+from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
 from app.infrastructure.observability.profiling import ProfilingMiddleware
@@ -30,15 +31,17 @@ from app.presentation.exception_handlers import business_error_handler
 from app.presentation.exception_handlers import global_exception_handler
 from app.presentation.exception_handlers import infra_error_handler
 from app.presentation.exception_handlers import request_validation_handler
-from app.infrastructure.middleware.rate_limit import RateLimitMiddleware
-from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.utils.configs import ProfilingConfig
 from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
 from app.utils.serializer import AdvORJSONResponse
 
+
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from app.core.types import ConfigFromDict
     from app.domain.interfaces.observability import ILoggingStrategy
     from app.domain.interfaces.observability import IMetricsStrategy
     from app.domain.interfaces.observability import ITracingStrategy
@@ -88,7 +91,7 @@ def create_middleware_list(
     if rate_limit_config.enabled:
         middleware_list.append(
             Middleware(
-                cast(Any, RateLimitMiddleware),
+                cast("Any", RateLimitMiddleware),
                 config=rate_limit_config,
                 store=rate_limit_store,
             ),
@@ -96,7 +99,7 @@ def create_middleware_list(
     if profiling_config.enabled:
         middleware_list.append(
             Middleware(
-                cast(Any, ProfilingMiddleware),
+                cast("Any", ProfilingMiddleware),
                 config=profiling_config,
             ),
         )
@@ -114,41 +117,46 @@ def add_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(Exception, global_exception_handler)
 
 
+@asynccontextmanager
+async def app_lifespan(
+    app: FastAPI,
+    container: AppContainer,
+) -> AsyncIterator[None]:
+    """ASGI lifespan: init/shutdown resources via DI container."""
+    app.state.container = container
+    container.wire(packages=["app"])
+    _ensure_observability()
+    infra = container.infra_container()
+    init_result = infra.init_resources()
+    if init_result is not None:
+        await init_result
+    try:
+        await anyio.lowlevel.checkpoint()
+        yield
+    finally:
+        shutdown_result = infra.shutdown_resources()
+        if shutdown_result is not None:
+            await shutdown_result
+        container.unwire()
+
+
 def create_app() -> FastAPI:
     """Factory function to create the FastAPI application."""
     container: AppContainer = AppContainer()
-    cast(ConfigFromDict, container.infra_container.config).from_dict(
+    infra_container = container.infra_container
+    cast("ConfigFromDict", infra_container.config).from_dict(
         load_settings().as_dict(),
     )
-
-    logger_config = container.infra_container.logger_config()
-    otlp_config = container.infra_container.otlp_config()
-
-    setup_logging(logger_config=logger_config, otlp_config=otlp_config)
+    setup_logging(
+        logger_config=infra_container.logger_config(),
+        otlp_config=infra_container.otlp_config(),
+    )
     setup_metrics()
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.container = container
-        container.wire(packages=["app"])
-        _ensure_observability()
-        infra = container.infra_container()
-        init_result = infra.init_resources()
-        if init_result is not None:
-            await init_result
-        try:
-            await anyio.lowlevel.checkpoint()
-            yield
-        finally:
-            shutdown_result = infra.shutdown_resources()
-            if shutdown_result is not None:
-                await shutdown_result
-            container.unwire()
-
-    rate_limit_config = container.infra_container.rate_limit_config()
-    rate_limit_store = container.infra_container.rate_limit_store()
-    security_config = container.infra_container.security_config()
-    profiling_config = container.infra_container.profiling_config()
+    rate_limit_config = infra_container.rate_limit_config()
+    rate_limit_store = infra_container.rate_limit_store()
+    security_config = infra_container.security_config()
+    profiling_config = infra_container.profiling_config()
 
     app = FastAPI(
         middleware=create_middleware_list(
@@ -157,7 +165,7 @@ def create_app() -> FastAPI:
             rate_limit_config=rate_limit_config,
             rate_limit_store=rate_limit_store,
         ),
-        lifespan=lifespan,
+        lifespan=partial(app_lifespan, container=container),
         default_response_class=AdvORJSONResponse,
     )
     app.state.container = container

@@ -1,18 +1,28 @@
-"""HTTP-клиент (httpx) как ресурс DI: создание и закрытие только через контейнер."""
+"""HTTP-клиент (httpx) как ресурс DI.
+
+Создание/закрытие - только через DI-контейнер.
+"""
 
 from __future__ import annotations
 
-import httpx
-from dependency_injector import resources
+from typing import TYPE_CHECKING
 
-from app.utils.configs import HttpClientConfig
+from dependency_injector import resources
+import httpx
+
+
+if TYPE_CHECKING:
+    from app.utils.configs import HttpClientConfig
 
 
 def _create_client(
     config: HttpClientConfig,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> httpx.AsyncClient:
-    """Собрать AsyncClient из конфига и опционального транспорта (внутренний)."""
+    """Собрать AsyncClient из конфига.
+
+    transport задается только для тестов.
+    """
     timeout = httpx.Timeout(config.timeout_seconds)
     limits = httpx.Limits(
         max_connections=config.max_connections,
@@ -28,15 +38,20 @@ def _create_client(
 
 
 class HttpClientResource(resources.AsyncResource[httpx.AsyncClient]):
-    """Ресурс DI: создаёт httpx.AsyncClient при init, закрывает при shutdown."""
+    """Ресурс DI: создаёт httpx.AsyncClient при init.
+
+    И закрывает при shutdown.
+    """
 
     async def init(
         self,
         config: HttpClientConfig,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> httpx.AsyncClient:
-        """Создать и вернуть клиент; конфиг и транспорт инжектируются из контейнера."""
-        return _create_client(config, transport=transport)
+        """Создать и вернуть клиент (config и transport приходят из DI)."""
+        client = _create_client(config, transport=transport)
+        _ = id(self)
+        return client
 
     async def shutdown(
         self,
@@ -44,4 +59,5 @@ class HttpClientResource(resources.AsyncResource[httpx.AsyncClient]):
     ) -> None:
         """Закрыть клиент при остановке контейнера."""
         if client is not None:
+            _ = id(self)
             await client.aclose()

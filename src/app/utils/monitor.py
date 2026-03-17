@@ -173,7 +173,7 @@ class _MonitoringHandler:
             logger.exception("monitor action_when_exception failed")
 
 
-def _get_bound_arguments(
+def get_bound_arguments(
     func: Callable[..., Any],
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
@@ -187,7 +187,11 @@ def _get_bound_arguments(
         sig = inspect.signature(func)
         bound = sig.bind(*args, **kwargs)
         bound.apply_defaults()
-        return {k: v for k, v in bound.arguments.items() if k != "self"}
+        return {
+            k: v
+            for k, v in bound.arguments.items()
+            if k != "self"
+        }
     except (ValueError, TypeError):
         return {}
 
@@ -216,7 +220,7 @@ def _async_wrapper[**P, R](
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
             named = (
-                _get_bound_arguments(func, args, kwargs)
+                get_bound_arguments(func, args, kwargs)
                 if options.use_log_args
                 else None
             )
@@ -251,7 +255,7 @@ def _sync_wrapper[**P, R](
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
             named = (
-                _get_bound_arguments(func, args, kwargs)
+                get_bound_arguments(func, args, kwargs)
                 if options.use_log_args
                 else None
             )
