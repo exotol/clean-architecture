@@ -2,6 +2,12 @@
 
 Comprehensive documentation for the EVA project - a Clean Architecture Python application template.
 
+## Non-negotiables (for everyone, including agents)
+
+- **Do not suppress checks in code**: `# noqa`, `# type: ignore`, and similar directives are not allowed.
+- **Do not add ignore rules to `pyproject.toml` on your own** (for example `extend-per-file-ignores`, `ignore`, etc.).
+- **Fix problems, don’t hide them** by suppressing lint/type checks.
+
 ## Table of Contents
 
 | Document | Description |
@@ -14,6 +20,7 @@ Comprehensive documentation for the EVA project - a Clean Architecture Python ap
 | [Docker](docker.md) | Docker build, optimizations, and deployment |
 | [Makefile Commands](makefile.md) | All available automation commands |
 | [Configuration](configuration.md) | Settings and environment configuration |
+| [Commits](commits.md) | Conventional Commits standard and examples |
 
 ## Quick Start
 

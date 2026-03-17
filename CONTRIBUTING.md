@@ -5,6 +5,7 @@
 - **Do not break the system**: every change must keep the project runnable and testable.
 - **LEAN**: smallest possible change that solves the task; avoid “bonus refactors”.
 - **No mutable globals**: state through DI (`app.core.containers`, FastAPI `Depends()`), constants only in `app.core.constants`.
+- **No suppression of checks**: `# noqa` and `# type: ignore` are **forbidden** in code; fix the code instead. Do not add new ignore rules in `pyproject.toml`; every issue must be **solved**, not suppressed.
 
 ## Local setup
 

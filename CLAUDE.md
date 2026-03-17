@@ -22,7 +22,7 @@ make run.pytest
 
 - **No mutable globals** (no module-level state; no `global` writes). Use DI only.
 - **Tests required** for new/changed behavior; keep coverage ≥95%.
-- **Ruff + mypy strict** must pass. Avoid `noqa` / `type: ignore` unless justified.
+- **Ruff + mypy strict** must pass. **No suppression:** `# noqa` and `# type: ignore` are **forbidden** in code; fix the underlying issue instead. Do not add new ignore rules in `pyproject.toml`; solve problems in code.
 - **No “drive-by refactors”** (LEAN).
 - **No secrets in repo**. Use Dynaconf configs and examples only.
 
@@ -31,5 +31,6 @@ make run.pytest
 - Rules: `AGENTS.md` (full), `.cursor/rules/` (Cursor)
 - Architecture: `docs/architecture.md`, `docs/structure.md`
 - Testing: `docs/testing.md`
+- Commits: `docs/commits.md` (Conventional Commits)
 - Tooling: `pyproject.toml`, `Makefile`
 

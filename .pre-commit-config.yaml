@@ -24,3 +24,9 @@ repos:
         args: ["--install-types", "--non-interactive"]
         additional_dependencies: ["pydantic>=2"]
 
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.13.9
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
