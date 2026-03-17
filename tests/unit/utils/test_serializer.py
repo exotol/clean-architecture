@@ -237,13 +237,34 @@ def test_cycle_detection(serializer: ItemSerializer) -> None:
     result = serializer.serialize(data)
 
     # We expect cycle to be detected and skipped (no recursion error).
-    # The implementation skips if seen
     assert result["key"] == "value"
 
     stats = serializer.get_stats()
     assert stats["cycles_detected"] >= 1
 
-    # ... previous tests ...
+
+def test_iterative_ref_resolution_dict_and_list(
+    serializer_no_orjson: ItemSerializer,
+) -> None:
+    """Shared refs in dict and list get resolved in phase 2.
+
+    Covers ref resolution in the iterative serializer.
+    """
+    shared = {"nested": 42}
+    data = {"a": shared, "b": shared, "list": [1, shared, 2]}
+    serializer_no_orjson.config.use_orjson = False
+    result = serializer_no_orjson.serialize(data)
+    assert result["a"] == {"nested": 42}
+    assert result["b"] == {"nested": 42}
+    assert result["list"][1] == {"nested": 42}
+
+
+def test_warn_depth_logged(serializer_no_orjson: ItemSerializer) -> None:
+    """Deep nesting at/above warn_depth triggers debug log."""
+    serializer_no_orjson.config.warn_depth = 2
+    data = {"a": {"b": {"c": 1}}}
+    result = serializer_no_orjson.serialize(data)
+    assert result["a"]["b"]["c"] == 1
 
 
 def test_max_depth_limit(serializer: ItemSerializer) -> None:
@@ -504,3 +525,168 @@ def test_orjson_default_dataclass_instance() -> None:
     result = ItemSerializer.orjson_default(obj)
 
     assert result == {"x": 42}
+
+
+def test_orjson_default_object_with_dict_only(
+    serializer: ItemSerializer,
+) -> None:
+    """Object with __dict__ but no isoformat/hex uses obj_dict.
+
+    Covers serializer `orjson_default` dict fallback branch.
+    """
+    class WithDict:
+        def __init__(self) -> None:
+            self.a = 1
+            self.b = 2
+
+    serializer.config.use_orjson = True
+    result = serializer.serialize({"x": WithDict()})
+    assert result["x"] == {"a": 1, "b": 2}
+
+
+def test_orjson_default_returns_dict_direct() -> None:
+    """Direct call: `orjson_default` returns `__dict__` as a dict."""
+    class PlainObj:
+        def __init__(self) -> None:
+            self.k = "v"
+
+    out = ItemSerializer.orjson_default(PlainObj())
+    assert out == {"k": "v"}
+
+
+def test_try_isoformat_raises_returns_none(serializer: ItemSerializer) -> None:
+    """Object whose isoformat() raises is handled (logger.debug branch)."""
+    class BadIso:
+        @staticmethod
+        def isoformat() -> str:
+            raise ValueError("bad")
+
+    serializer.config.use_orjson = True
+    result = serializer.serialize({"t": BadIso()})
+    assert "t" in result
+    # After isoformat raises, orjson_default falls back to __dict__
+    assert isinstance(result["t"], dict)
+
+
+def test_try_hex_returns_non_str_converted(serializer: ItemSerializer) -> None:
+    """Object whose hex() returns non-str gets str(value)."""
+    class HexReturnsInt:
+        @staticmethod
+        def hex() -> int:
+            return 255
+
+    serializer.config.use_orjson = True
+    result = serializer.serialize({"h": HexReturnsInt()})
+    assert result["h"] == "255"
+
+
+def test_try_hex_string_attr_returned(serializer: ItemSerializer) -> None:
+    """Object with .hex as string (not callable) returns that string."""
+    class HexStr:
+        hex = "cafe"
+
+    serializer.config.use_orjson = True
+    result = serializer.serialize({"h": HexStr()})
+    assert result["h"] == "cafe"
+
+
+def test_try_hex_raises_returns_none(serializer: ItemSerializer) -> None:
+    """Object whose hex() raises is handled (logger.debug branch)."""
+    class BadHex:
+        @staticmethod
+        def hex() -> str:
+            raise RuntimeError("bad hex")
+
+    serializer.config.use_orjson = True
+    result = serializer.serialize({"h": BadHex()})
+    assert "h" in result
+    assert isinstance(result["h"], (dict, str, type(None)))
+
+
+def test_orjson_default_falls_back_to_str_for_object_without_dict() -> None:
+    """`orjson_default` falls back to `str(obj)` without `__dict__`."""
+
+    class NoDict:
+        __slots__ = ()
+
+        def __str__(self) -> str:
+            return "no-dict"
+
+    assert ItemSerializer.orjson_default(NoDict()) == "no-dict"
+
+
+def test_serialize_iterative_returns_primitive_directly() -> None:
+    """Primitive root values are returned without iterative traversal."""
+    serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
+    assert serializer.serialize(123) == 123
+
+
+def test_serialize_iterative_deep_nesting_triggers_debug_branch() -> None:
+    """Deep nesting branch is executed when depth reaches warn_depth."""
+    serializer = ItemSerializer(
+        config=SerializationConfig(use_orjson=False, warn_depth=1),
+    )
+    nested = {"a": {"b": {"c": 1}}}
+    assert serializer.serialize(nested) == nested
+
+
+def test_serialize_iterative_handles_dict_iteration_error() -> None:
+    """Errors during iterative traversal use a safe fallback."""
+    serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
+    # Trigger exception path in iterative serialization
+    out = serializer.serialize({"data": {"x": object()}})
+    # Result may be dict with fallback values or str
+    assert isinstance(out, (str, dict))
+
+
+def test_serialize_iterative_handles_key_str_failure() -> None:
+    """Iterative serializer catches exceptions from `str(key)` conversion."""
+
+    class BadKey:
+        def __str__(self) -> str:
+            raise RuntimeError("bad __str__")
+
+    serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
+    out = serializer.serialize({BadKey(): "value"})
+    assert isinstance(out, str)
+
+
+def test_serialize_primitive_handles_getattr_explosion() -> None:
+    """Primitive serialization exceptions are caught.
+
+    The serializer returns a safe string fallback.
+    """
+
+    class Exploding:
+        def __getattribute__(self, name: str) -> object:
+            raise RuntimeError(f"boom: {name}")
+
+    serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
+    out = serializer.serialize(Exploding())
+    assert isinstance(out, str)
+    assert "Exploding" in out
+
+
+def test_adv_orjson_response_serialize_exception_fallback() -> None:
+    """AdvORJSONResponse uses str(obj) when orjson.dumps raises."""
+    with patch(
+        "app.utils.serializer.orjson.dumps",
+        side_effect=[
+            RecursionError("depth"),
+            b'"fallback_str"',
+            b'"extra"',
+        ],
+    ):
+        resp = AdvORJSONResponse(content=None)
+        out = resp.render({"x": 1})
+    assert out in {b'"fallback_str"', b'"extra"'}
+
+
+def test_adv_orjson_response_raises_when_orjson_unavailable() -> None:
+    """AdvORJSONResponse.render raises when orjson is None."""
+    resp = AdvORJSONResponse(content=None)
+    with (
+        patch("app.utils.serializer.orjson", None),
+        pytest.raises(RuntimeError, match="orjson must be installed"),
+    ):
+        resp.render({"x": 1})

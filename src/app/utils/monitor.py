@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import functools
 import inspect
 import logging
@@ -34,74 +35,69 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-# --- Strategy Getters (using @inject) ---
-@inject
-def _get_logging_strategy(
-    strategy: ILoggingStrategy = Provide["infra_container.logging_strategy"],
-) -> ILoggingStrategy:
-    return strategy
+@dataclass(frozen=True)
+class _MonitorOptions:
+    """Options for monitor behaviour (reraise, callbacks, logging)."""
+
+    reraise: bool = True
+    action_when_exception: Callable[..., Any] | None = None
+    use_log_args: bool = False
+    use_log_result: bool = False
+
+
+@dataclass(frozen=True)
+class _MonitorStrategies:
+    """Injected observability strategies for monitor."""
+
+    logging: ILoggingStrategy
+    tracing: ITracingStrategy
+    metrics: IMetricsStrategy
 
 
 @inject
-def _get_tracing_strategy(
-    strategy: ITracingStrategy = Provide["infra_container.tracing_strategy"],
-) -> ITracingStrategy:
-    return strategy
-
-
-@inject
-def _get_metrics_strategy(
-    strategy: IMetricsStrategy = Provide["infra_container.metrics_strategy"],
-) -> IMetricsStrategy:
-    return strategy
+def _resolve_monitor_strategies(
+    logging_strategy: ILoggingStrategy = Provide[
+        "infra_container.logging_strategy"
+    ],
+    tracing_strategy: ITracingStrategy = Provide[
+        "infra_container.tracing_strategy"
+    ],
+    metrics_strategy: IMetricsStrategy = Provide[
+        "infra_container.metrics_strategy"
+    ],
+) -> _MonitorStrategies:
+    """Resolve observability strategies via DI (used inside wrapper)."""
+    return _MonitorStrategies(
+        logging=logging_strategy,
+        tracing=tracing_strategy,
+        metrics=metrics_strategy,
+    )
 
 
 class _MonitoringHandler:
     """Handle logging/tracing/metrics for `monitor`.
 
-    Delegates to injected strategies.
+    Delegates to injected strategies (passed in at construction).
     """
 
     def __init__(
         self,
         event_name: Events | str,
         *,
-        reraise: bool = True,
-        action_when_exception: Callable[[Exception], Any] | None = None,
-        use_log_args: bool = False,
-        use_log_result: bool = False,
+        strategies: _MonitorStrategies,
+        options: _MonitorOptions,
     ) -> None:
         if isinstance(event_name, Events):
             self.event_name = event_name.value.code
         else:
             self.event_name = event_name
-
-        self.reraise = reraise
-        self.action_when_exception = action_when_exception
-        self.use_log_args = use_log_args
-        self.use_log_result = use_log_result
-
-        self._logging_strategy: ILoggingStrategy | None = None
-        self._tracing_strategy: ITracingStrategy | None = None
-        self._metrics_strategy: IMetricsStrategy | None = None
-
-    @property
-    def logging_strategy(self) -> ILoggingStrategy:
-        if self._logging_strategy is None:
-            self._logging_strategy = _get_logging_strategy()
-        return self._logging_strategy
-
-    @property
-    def tracing_strategy(self) -> ITracingStrategy:
-        if self._tracing_strategy is None:
-            self._tracing_strategy = _get_tracing_strategy()
-        return self._tracing_strategy
-
-    @property
-    def metrics_strategy(self) -> IMetricsStrategy:
-        if self._metrics_strategy is None:
-            self._metrics_strategy = _get_metrics_strategy()
-        return self._metrics_strategy
+        self.logging_strategy = strategies.logging
+        self.tracing_strategy = strategies.tracing
+        self.metrics_strategy = strategies.metrics
+        self.reraise = options.reraise
+        self.action_when_exception = options.action_when_exception
+        self.use_log_args = options.use_log_args
+        self.use_log_result = options.use_log_result
 
     def log_start(
         self,
@@ -129,6 +125,11 @@ class _MonitoringHandler:
             duration=duration,
             status="success",
         )
+        self.metrics_strategy.record_sla(
+            event_name=self.event_name,
+            duration=duration,
+            success=True,
+        )
 
         self.logging_strategy.log_success(
             self.event_name,
@@ -150,6 +151,11 @@ class _MonitoringHandler:
             duration=duration,
             status="error",
             error_type=error_type,
+        )
+        self.metrics_strategy.record_sla(
+            event_name=self.event_name,
+            duration=duration,
+            success=False,
         )
 
         self.logging_strategy.log_error(self.event_name, exc, context)
@@ -175,10 +181,17 @@ def _classify_error(exc: Exception) -> str:
 
 def _async_wrapper[**P, R](
     func: Callable[P, Coroutine[Any, Any, R]],
-    handler: _MonitoringHandler,
+    event_name: str,
+    options: _MonitorOptions,
 ) -> Callable[P, Coroutine[Any, Any, R]]:
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        strategies = _resolve_monitor_strategies()
+        handler = _MonitoringHandler(
+            event_name=event_name,
+            strategies=strategies,
+            options=options,
+        )
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
             start_time, context = handler.log_start(args, kwargs)
@@ -193,15 +206,22 @@ def _async_wrapper[**P, R](
             handler.log_success(result, start_time, context)
             return result
 
-    return wrapper
+    return cast("Callable[P, Coroutine[Any, Any, R]]", wrapper)
 
 
 def _sync_wrapper[**P, R](
     func: Callable[P, R],
-    handler: _MonitoringHandler,
+    event_name: str,
+    options: _MonitorOptions,
 ) -> Callable[P, R]:
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        strategies = _resolve_monitor_strategies()
+        handler = _MonitoringHandler(
+            event_name=event_name,
+            strategies=strategies,
+            options=options,
+        )
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
             start_time, context = handler.log_start(args, kwargs)
@@ -216,7 +236,7 @@ def _sync_wrapper[**P, R](
             handler.log_success(result, start_time, context)
             return result
 
-    return wrapper
+    return cast("Callable[P, R]", wrapper)
 
 
 def monitor(
@@ -232,25 +252,33 @@ def monitor(
     def decorator(
         func: Callable[P, R] | Callable[P, Coroutine[Any, Any, R]],
     ) -> Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]:
-        handler = _MonitoringHandler(
-            event_name=event_name,
+        event_name_str = (
+            event_name.value.code
+            if isinstance(event_name, Events)
+            else event_name
+        )
+        opts = _MonitorOptions(
             reraise=reraise,
             action_when_exception=action_when_exception,
             use_log_args=use_log_args,
             use_log_result=use_log_result,
         )
-
         if inspect.iscoroutinefunction(func):
             return cast(
                 "Callable[P, Coroutine[Any, Any, R]]",
                 _async_wrapper(
                     cast("Callable[P, Coroutine[Any, Any, R]]", func),
-                    handler,
+                    event_name_str,
+                    opts,
                 ),
             )
         return cast(
             "Callable[P, R]",
-            _sync_wrapper(cast("Callable[P, R]", func), handler),
+            _sync_wrapper(
+                cast("Callable[P, R]", func),
+                event_name_str,
+                opts,
+            ),
         )
 
     return cast(

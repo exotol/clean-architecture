@@ -62,3 +62,13 @@ class IMetricsStrategy(Protocol):
     ) -> None:
         """Record request metrics."""
         ...
+
+    def record_sla(
+        self,
+        event_name: str,
+        duration: float,
+        *,
+        success: bool,
+    ) -> None:
+        """Record SLA metrics (latency + success/error for error rate)."""
+        ...

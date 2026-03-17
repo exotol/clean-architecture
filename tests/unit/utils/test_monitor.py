@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
-from unittest.mock import patch
 
 import pytest
 
@@ -11,55 +11,40 @@ from app.core.exceptions import InfrastructureError
 from app.utils.monitor import monitor
 
 
-# --- Fixtures for strategies ---
-@pytest.fixture
-def mock_logging_strategy():
-    return MagicMock()
+if TYPE_CHECKING:
+    from app.core.containers import AppContainer
+
+
+# --- Fixtures: strategies from DI container overrides (conftest) ---
+@pytest.fixture(autouse=True)
+def rewire_mock_container(di_container: AppContainer) -> None:
+    """Re-wire app package to test container (undo create_app wiring)."""
+    di_container.wire(packages=["app"])
+
+
+@pytest.fixture(autouse=True)
+def reset_strategy_mocks(di_container: AppContainer) -> None:
+    """Reset strategy mocks before each test for isolated assertions."""
+    di_container.infra_container.logging_strategy().reset_mock()
+    di_container.infra_container.tracing_strategy().reset_mock()
+    di_container.infra_container.metrics_strategy().reset_mock()
 
 
 @pytest.fixture
-def mock_tracing_strategy():
+def mock_tracing_strategy(di_container: AppContainer) -> MagicMock:
+    """Configure container's tracing mock with span context manager."""
+    mock_tracing = di_container.infra_container.tracing_strategy()
     mock_span = MagicMock()
-    mock_tracing = MagicMock()
     mock_tracing.start_span.return_value = mock_span
     mock_span.__enter__.return_value = mock_span
     mock_span.__exit__.return_value = None
     return mock_tracing
 
 
-@pytest.fixture
-def mock_metrics_strategy():
-    return MagicMock()
-
-
-@pytest.fixture(autouse=True)
-def mock_dependencies(
-    mock_logging_strategy,
-    mock_tracing_strategy,
-    mock_metrics_strategy,
-):
-    with (
-        patch(
-            "app.utils.monitor._get_logging_strategy",
-            return_value=mock_logging_strategy,
-        ),
-        patch(
-            "app.utils.monitor._get_tracing_strategy",
-            return_value=mock_tracing_strategy,
-        ),
-        patch(
-            "app.utils.monitor._get_metrics_strategy",
-            return_value=mock_metrics_strategy,
-        ),
-    ):
-        yield
-
-
 # --- Sync Tests ---
 def test_monitor_sync_success(
-    mock_logging_strategy,
-    mock_metrics_strategy,
-    mock_tracing_strategy,
+    di_container: AppContainer,
+    mock_tracing_strategy: MagicMock,
 ) -> None:
     # Arrange
     @monitor(event_name="test_sync")
@@ -71,21 +56,19 @@ def test_monitor_sync_success(
 
     # Assert
     assert result == 3
-    # Check strategies
+    logging_strategy = di_container.infra_container.logging_strategy()
+    metrics_strategy = di_container.infra_container.metrics_strategy()
     mock_tracing_strategy.start_span.assert_called_once_with("test_sync")
-    mock_logging_strategy.log_start.assert_called_once()
-    mock_logging_strategy.log_success.assert_called_once()
-    mock_metrics_strategy.record_request.assert_called_once()
+    logging_strategy.log_start.assert_called_once()
+    logging_strategy.log_success.assert_called_once()
+    metrics_strategy.record_request.assert_called_once()
 
-    _args, kwargs = mock_metrics_strategy.record_request.call_args
+    _args, kwargs = metrics_strategy.record_request.call_args
     assert kwargs["status"] == "success"
     assert kwargs["event_name"] == "test_sync"
 
 
-def test_monitor_sync_error(
-    mock_logging_strategy,
-    mock_metrics_strategy,
-) -> None:
+def test_monitor_sync_error(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name=Events.SEARCH_SERVICE, reraise=True)
     def sync_fail():
@@ -99,17 +82,17 @@ def test_monitor_sync_error(
         sync_fail()
 
     # Assert
-    mock_logging_strategy.log_error.assert_called_once()
-    mock_metrics_strategy.record_request.assert_called_once()
+    logging_strategy = di_container.infra_container.logging_strategy()
+    metrics_strategy = di_container.infra_container.metrics_strategy()
+    logging_strategy.log_error.assert_called_once()
+    metrics_strategy.record_request.assert_called_once()
 
-    _args, kwargs = mock_metrics_strategy.record_request.call_args
+    _args, kwargs = metrics_strategy.record_request.call_args
     assert kwargs["status"] == "error"
     assert kwargs["error_type"] == "business"
 
 
-def test_monitor_sync_error_infrastructure(
-    mock_metrics_strategy,
-) -> None:
+def test_monitor_sync_error_infrastructure(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="infra_test")
     def sync_fail():
@@ -120,12 +103,12 @@ def test_monitor_sync_error_infrastructure(
         sync_fail()
 
     # Assert
-    _args, kwargs = mock_metrics_strategy.record_request.call_args
+    metrics_strategy = di_container.infra_container.metrics_strategy()
+    _args, kwargs = metrics_strategy.record_request.call_args
     assert kwargs["error_type"] == "infrastructure"
 
 
-def test_monitor_sync_suppress_exception(
-) -> None:
+def test_monitor_sync_suppress_exception() -> None:
     # Arrange
     @monitor(event_name="suppress", reraise=False)
     def sync_fail():
@@ -138,12 +121,14 @@ def test_monitor_sync_suppress_exception(
     assert result is None
 
 
-def test_monitor_callback_error(mock_logging_strategy: MagicMock) -> None:
+def test_monitor_callback_error(di_container: AppContainer) -> None:
     # Test that exception in callback is suppressed
     callback = MagicMock(side_effect=ValueError("Callback failed"))
 
     @monitor(
-        Events.SEARCH_SERVICE, action_when_exception=callback, reraise=False,
+        Events.SEARCH_SERVICE,
+        action_when_exception=callback,
+        reraise=False,
     )
     def func():
         raise RuntimeError("Original error")
@@ -152,14 +137,13 @@ def test_monitor_callback_error(mock_logging_strategy: MagicMock) -> None:
     func()
 
     callback.assert_called_once()  # Should return None if suppressed
-    mock_logging_strategy.log_error.assert_called_once()
+    logging_strategy = di_container.infra_container.logging_strategy()
+    logging_strategy.log_error.assert_called_once()
 
 
 # --- Async Tests ---
 @pytest.mark.asyncio
-async def test_monitor_async_success(
-    mock_metrics_strategy,
-) -> None:
+async def test_monitor_async_success(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="async_test")
     async def async_func(x):
@@ -170,17 +154,13 @@ async def test_monitor_async_success(
 
     # Assert
     assert result == 10
-    mock_metrics_strategy.record_request.assert_called_once()
-    assert (
-        mock_metrics_strategy.record_request.call_args[1]["status"]
-        == "success"
-    )
+    metrics_strategy = di_container.infra_container.metrics_strategy()
+    metrics_strategy.record_request.assert_called_once()
+    assert metrics_strategy.record_request.call_args[1]["status"] == "success"
 
 
 @pytest.mark.asyncio
-async def test_monitor_async_error(
-    mock_metrics_strategy,
-) -> None:
+async def test_monitor_async_error(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="async_error")
     async def async_fail():
@@ -191,7 +171,18 @@ async def test_monitor_async_error(
         await async_fail()
 
     # Assert
-    mock_metrics_strategy.record_request.assert_called_once()
-    assert (
-        mock_metrics_strategy.record_request.call_args[1]["status"] == "error"
-    )
+    metrics_strategy = di_container.infra_container.metrics_strategy()
+    metrics_strategy.record_request.assert_called_once()
+    assert metrics_strategy.record_request.call_args[1]["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_monitor_async_suppress_returns_none() -> None:
+    """Async monitor with reraise=False returns None on exception."""
+
+    @monitor(event_name="async_suppress", reraise=False)
+    async def async_fail():
+        raise RuntimeError("suppressed")
+
+    result = await async_fail()
+    assert result is None

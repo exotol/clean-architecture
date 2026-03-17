@@ -11,7 +11,7 @@ from app.utils.serializer import ItemSerializer
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_di_container() -> None:
+def setup_di_container() -> AppContainer:
     """Initialize DI container for unit tests."""
     container = AppContainer()
     container.infra_container().config.from_dict({})
@@ -22,6 +22,13 @@ def setup_di_container() -> None:
     container.infra_container.metrics_strategy.override(MagicMock())
 
     container.wire(packages=["app"])
+    return container
+
+
+@pytest.fixture(scope="session")
+def di_container(setup_di_container: AppContainer) -> AppContainer:
+    """Return the wired DI container (for tests that need strategy mocks)."""
+    return setup_di_container
 
 
 @pytest.fixture

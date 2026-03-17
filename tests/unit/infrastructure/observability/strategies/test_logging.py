@@ -15,11 +15,13 @@ from tests.schemas.unit.infrastructure.observability.strategies import (
 
 @pytest.fixture
 def mock_logger() -> MagicMock:
-    # Patch the logger in the module
+    """Patch module _logger() so strategy uses our mock."""
+    mock_log = MagicMock()
     with patch(
-        "app.infrastructure.observability.strategies.logging.logger",
-    ) as mock:
-        yield mock
+        "app.infrastructure.observability.strategies.logging._logger",
+        return_value=mock_log,
+    ):
+        yield mock_log
 
 
 @pytest.fixture
@@ -95,12 +97,13 @@ def test_log_start(
     else:
         assert "kwargs" not in context
 
-    # Verify logger called with extra=context (lazy formatting)
-    mock_logger.info.assert_called_with(
-        "%s_SEND",
-        entity.event_name,
-        extra=context,
-    )
+    # Verify structlog logger called with message and **log_kw (event omitted)
+    mock_logger.info.assert_called_once()
+    call_args = mock_logger.info.call_args
+    assert call_args[0][0] == f"{entity.event_name}_SEND"
+    log_kw = {k: v for k, v in context.items() if k != "event"}
+    for key, value in log_kw.items():
+        assert call_args[1].get(key) == value
 
 
 @pytest.mark.parametrize(
@@ -152,19 +155,13 @@ def test_log_success(
         use_log_result=entity.use_log_result,
     )
 
-    # We expect logger.info to be called with extra=context.
-
+    mock_logger.info.assert_called_once()
+    call_args = mock_logger.info.call_args
+    assert call_args[0][0] == f"{entity.event_name}_SUCCESS"
     if expected.result_in_bind:
-        assert "result" in context
+        assert "result" in call_args[1]
     else:
-        # If we didn't add result, maybe it's not in context
-        assert "result" not in context
-
-    mock_logger.info.assert_called_with(
-        "%s_SUCCESS",
-        entity.event_name,
-        extra=context,
-    )
+        assert "result" not in call_args[1]
 
 
 @pytest.mark.parametrize(
@@ -189,9 +186,7 @@ def test_log_error(
 
     strategy.log_error(entity.event_name, entity.exc, context)
 
-    mock_logger.error.assert_called_with(
-        "%s_ERROR",
-        entity.event_name,
-        exc_info=entity.exc,
-        extra=context,
-    )
+    mock_logger.error.assert_called_once()
+    call_args = mock_logger.error.call_args
+    assert call_args[0][0] == f"{entity.event_name}_ERROR"
+    assert call_args[1]["exc_info"] is entity.exc

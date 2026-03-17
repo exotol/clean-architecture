@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
+from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-from pythonjsonlogger import jsonlogger
+import structlog
 
 from app.infrastructure.observability.logging import setup_logging
 from app.utils.configs import LoggerConfig
@@ -12,6 +14,76 @@ from app.utils.configs import LogLevel
 from app.utils.configs import OTLPConfig
 from tests.schemas.unit.infrastructure.logging import LoggingEntity
 from tests.schemas.unit.infrastructure.logging import LoggingExpected
+
+
+def _assert_logging_config(
+    mock_structlog_configure: MagicMock,
+    mock_set_tracer_provider: MagicMock,
+    mock_instrumentor: MagicMock,
+    expected: LoggingExpected,
+    mock_tracer_provider_instance: Any,
+) -> None:
+    """Assert logging setup results (structlog + stdlib, no dictConfig)."""
+    if expected.trace_provider_set:
+        mock_set_tracer_provider.assert_called_once()
+        args, _ = mock_set_tracer_provider.call_args
+        assert isinstance(args[0], type(mock_tracer_provider_instance))
+    mock_instrumentor.return_value.instrument.assert_called_once_with(
+        set_logging_formatter=False,
+    )
+    mock_structlog_configure.assert_called_once()
+    call_kw = mock_structlog_configure.call_args[1]
+    assert "processors" in call_kw
+    assert "logger_factory" in call_kw
+    assert isinstance(
+        call_kw["logger_factory"],
+        structlog.stdlib.LoggerFactory,
+    )
+
+
+def _assert_root_handlers(
+    entity: LoggingEntity,
+) -> None:
+    """Assert root logger has console handler with ProcessorFormatter."""
+    root = logging.getLogger()
+    assert len(root.handlers) >= 1
+    console_formatter = root.handlers[0].formatter
+    assert isinstance(
+        console_formatter,
+        structlog.stdlib.ProcessorFormatter,
+    )
+    if entity.logger_config.path:
+        assert len(root.handlers) >= 2
+        assert root.handlers[1].formatter is console_formatter
+
+
+class _MockTracerProvider:
+    def __init__(self, resource: Any = None) -> None:
+        pass
+
+    def add_span_processor(self, processor: Any) -> None:
+        pass
+
+
+class _MockBatchSpanProcessor:
+    def __init__(self, exporter: Any) -> None:
+        pass
+
+
+class _MockOTLPSpanExporter:
+    def __init__(self, endpoint: Any = None, insecure: Any = None) -> None:
+        pass
+
+
+class _MockConsoleSpanExporter:
+    def __init__(self) -> None:
+        pass
+
+
+class _MockResource:
+    @staticmethod
+    def create(*, attributes: Any) -> MagicMock:
+        return MagicMock(attributes=attributes)
 
 
 @pytest.fixture
@@ -31,9 +103,9 @@ def mock_set_tracer_provider():
 
 
 @pytest.fixture
-def mock_dict_config():
+def mock_structlog_configure():
     with patch(
-        "app.infrastructure.observability.logging.logging.config.dictConfig",
+        "app.infrastructure.observability.logging.structlog.configure",
     ) as mock:
         yield mock
 
@@ -44,6 +116,22 @@ def mock_instrumentor():
         "app.infrastructure.observability.logging.LoggingInstrumentor",
     ) as mock:
         yield mock
+
+
+@pytest.fixture
+def logging_mocks(
+    mock_trace_provider: MagicMock,
+    mock_set_tracer_provider: MagicMock,
+    mock_structlog_configure: MagicMock,
+    mock_instrumentor: MagicMock,
+) -> tuple[MagicMock, MagicMock, MagicMock, MagicMock]:
+    """Single fixture combining all logging mocks (reduces test arity)."""
+    return (
+        mock_trace_provider,
+        mock_set_tracer_provider,
+        mock_structlog_configure,
+        mock_instrumentor,
+    )
 
 
 @pytest.mark.parametrize(
@@ -94,98 +182,53 @@ def mock_instrumentor():
         ),
     ],
 )
-def test_setup_logging(  # noqa: C901, PLR0913, PLR0917
+def test_setup_logging(
     entity: LoggingEntity,
     expected: LoggingExpected,
-    mock_trace_provider: MagicMock,
-    mock_set_tracer_provider: MagicMock,
-    mock_dict_config: MagicMock,
-    mock_instrumentor: MagicMock,
-    tmp_path,
+    logging_mocks: tuple[MagicMock, MagicMock, MagicMock, MagicMock],
+    tmp_path: Any,
 ) -> None:
-    # Arrange
-    # Define dummy classes to simulate types for isinstance checks
-    class MockTracerProvider:
-        def __init__(self, resource=None):
-            pass
-
-        def add_span_processor(self, processor):
-            pass
-
-    class MockBatchSpanProcessor:
-        def __init__(self, exporter):
-            pass
-
-    class MockOTLPSpanExporter:
-        def __init__(self, endpoint=None, insecure=None):
-            pass
-
-    class MockConsoleSpanExporter:
-        def __init__(self):
-            pass
-
-    class MockResource:
-        @staticmethod
-        def create(*, attributes):  # noqa: ARG004
-            return MagicMock()
-
+    """Test setup_logging configures OpenTelemetry and structlog+stdlib."""
+    (
+        mock_trace_provider,
+        mock_set_tracer_provider,
+        mock_structlog_configure,
+        mock_instrumentor,
+    ) = logging_mocks
     mock_trace_provider.return_value = None
 
     with (
         patch(
             "app.infrastructure.observability.logging.TracerProvider",
-            new=MockTracerProvider,
+            new=_MockTracerProvider,
         ),
         patch(
             "app.infrastructure.observability.logging.BatchSpanProcessor",
-            new=MockBatchSpanProcessor,
+            new=_MockBatchSpanProcessor,
         ),
         patch(
             "app.infrastructure.observability.logging.OTLPSpanExporter",
-            new=MockOTLPSpanExporter,
+            new=_MockOTLPSpanExporter,
         ),
         patch(
             "app.infrastructure.observability.logging.ConsoleSpanExporter",
-            new=MockConsoleSpanExporter,
+            new=_MockConsoleSpanExporter,
         ),
         patch(
             "app.infrastructure.observability.logging.Resource",
-            new=MockResource,
+            new=_MockResource,
         ),
     ):
         if entity.logger_config.path:
             entity.logger_config.path = str(tmp_path / "logs.json")
-
-        # Act
         setup_logging(entity.logger_config, entity.otlp_config)
 
-        # Assert
-        if expected.trace_provider_set:
-            mock_set_tracer_provider.assert_called_once()
-            args, _ = mock_set_tracer_provider.call_args
-            assert isinstance(args[0], MockTracerProvider)
-
-        # Verify LoggingInstrumentor called
-        mock_instrumentor.return_value.instrument.assert_called_once_with(
-            set_logging_formatter=False,
+        _assert_logging_config(
+            mock_structlog_configure,
+            mock_set_tracer_provider,
+            mock_instrumentor,
+            expected,
+            _MockTracerProvider(None),
         )
 
-        # Check dictConfig called
-        mock_dict_config.assert_called_once()
-
-        config_args = mock_dict_config.call_args[0][0]
-        assert config_args["version"] == 1
-        assert "handlers" in config_args
-        assert "console" in config_args["handlers"]
-        assert config_args["formatters"]["json"]["()"] in {
-            "pythonjsonlogger.jsonlogger.JsonFormatter",
-            jsonlogger.JsonFormatter,
-        }
-
-        if entity.logger_config.path:
-            assert "file" in config_args["handlers"]
-            assert (
-                config_args["handlers"]["file"]["filename"]
-                == entity.logger_config.path
-            )
-            assert config_args["handlers"]["file"]["formatter"] == "json"
+        _assert_root_handlers(entity)

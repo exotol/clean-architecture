@@ -34,16 +34,15 @@ def test_init(mock_metrics: MagicMock) -> None:
     meter = mock_metrics.get_meter.return_value
 
     assert meter.create_counter.called
-
-    counter_call_kwargs = meter.create_counter.call_args[1]
-    assert counter_call_kwargs["name"] == constants.METRICS_REQUESTS_TOTAL_NAME
+    # First create_counter is requests_total
+    first_counter_kw = meter.create_counter.call_args_list[0][1]
+    assert first_counter_kw["name"] == constants.METRICS_REQUESTS_TOTAL_NAME
 
     assert meter.create_histogram.called
-
-    histogram_call_kwargs = meter.create_histogram.call_args[1]
+    # First create_histogram is request_duration
+    first_histogram_kw = meter.create_histogram.call_args_list[0][1]
     assert (
-        histogram_call_kwargs["name"]
-        == constants.METRICS_REQUEST_DURATION_NAME
+        first_histogram_kw["name"] == constants.METRICS_REQUEST_DURATION_NAME
     )
 
 
@@ -119,3 +118,37 @@ def test_record_request(
     assert histogram_args[0][0] == expected.histogram_record_value
 
     assert histogram_args[0][1] == expected.histogram_attrs
+
+
+def test_record_sla() -> None:
+    """record_sla calls sla_requests_total and sla_latency."""
+    strategy = OpentelemetryMetricsStrategy()
+    strategy.sla_requests_total = MagicMock()
+    strategy.sla_latency = MagicMock()
+
+    strategy.record_sla(
+        event_name="test_sla",
+        duration=0.5,
+        success=True,
+    )
+
+    strategy.sla_requests_total.add.assert_called_once_with(
+        1,
+        {"event": "test_sla", "status": "success"},
+    )
+    strategy.sla_latency.record.assert_called_once_with(
+        0.5,
+        {"event": "test_sla"},
+    )
+
+    strategy.sla_requests_total.reset_mock()
+    strategy.sla_latency.reset_mock()
+    strategy.record_sla(
+        event_name="test_sla_fail",
+        duration=0.1,
+        success=False,
+    )
+    strategy.sla_requests_total.add.assert_called_once_with(
+        1,
+        {"event": "test_sla_fail", "status": "error"},
+    )
