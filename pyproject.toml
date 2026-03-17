@@ -322,6 +322,22 @@ extend-immutable-calls = [
 # МИГРАЦИИ: Alembic не требует строгой типизации
 "alembic/*" = ["ANN"]
 
+# PERFORMANCE: gevent monkey-patching must run before other imports
+"tests/performance/locustfile.py" = ["E402"]
+
+# SERIALIZER: intentionally fail-safe and branchy (best-effort, must not raise)
+"src/app/utils/serializer.py" = [
+    "BLE001",
+    "C901",
+    "PLR0911",
+    "PLR0912",
+    "PLR0914",
+    "PLR0915",
+    "PLR2004",
+    "PLR6301",
+    "TRY300",
+]
+
 
 # ==============================================================================
 #                                    MYPY
