@@ -27,14 +27,13 @@ async def generate_answer(
     search_service: SearchService = Depends(
         Provide[AppContainer.search_service],
     ),
-) -> dict[str, SearchResponse]:
+) -> SearchResponse:
     """Generate an answer for the request using the search service."""
     documents = await search_service.search(query=request.query)
 
     # Mapper Logic (Domain Entity -> Schema)
-    response = SearchResponse(
+    return SearchResponse(
         documents=[
             Document(text=doc.text, metadata=doc.metadata) for doc in documents
         ],
     )
-    return {"hello": response}
