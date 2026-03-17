@@ -107,8 +107,14 @@ fmt:
 	@echo "Форматирование (ruff format)"
 	$(MAKE) ruff.format
 
+# Только settings.SECTION.KEY; запрет .get() и getattr(settings...) (AGENTS.md §7)
+check.settings:
+	@echo "Check: only settings.SECTION.KEY (no .get / getattr)..."
+	uv run python scripts/check_no_settings_dot_get.py
+
 check:
 	@echo "Quality gate: lint + types + unit tests + coverage"
+	$(MAKE) check.settings
 	$(MAKE) ruff.check
 	$(MAKE) mypy.check
 	$(MAKE) run.unit.cov
