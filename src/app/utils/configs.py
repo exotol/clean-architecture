@@ -132,3 +132,32 @@ class CircuitBreakerConfig(BaseModel):
     enabled: bool = False
     failure_threshold: int = 5
     recovery_timeout_seconds: float = 30.0
+
+
+class HttpClientConfig(BaseModel):
+    """Configuration for HTTP clients (httpx). Transport and timeouts."""
+
+    base_url: str = "http://localhost"
+    timeout_seconds: float = 30.0
+    max_connections: int = 100
+    max_keepalive_connections: int = 20
+    keepalive_expiry_seconds: float = 5.0
+
+
+def get_http_client_config(
+    settings: Dynaconf | None = None,
+) -> HttpClientConfig:
+    """Return HttpClientConfig from Dynaconf; uses load_settings() if None."""
+    if settings is None:
+        settings = load_settings()
+    return HttpClientConfig(
+        base_url=settings.HTTP_CLIENT.BASE_URL,
+        timeout_seconds=float(settings.HTTP_CLIENT.TIMEOUT_SECONDS),
+        max_connections=int(settings.HTTP_CLIENT.MAX_CONNECTIONS),
+        max_keepalive_connections=int(
+            settings.HTTP_CLIENT.MAX_KEEPALIVE_CONNECTIONS,
+        ),
+        keepalive_expiry_seconds=float(
+            settings.HTTP_CLIENT.KEEPALIVE_EXPIRY_SECONDS,
+        ),
+    )

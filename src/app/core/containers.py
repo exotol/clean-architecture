@@ -24,6 +24,7 @@ from app.infrastructure.persistence.repositories.search_repository import (
 from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
 from app.utils.configs import CacheConfig
 from app.utils.configs import CircuitBreakerConfig
+from app.utils.configs import HttpClientConfig
 from app.utils.configs import LoggerConfig
 from app.utils.configs import MetricsConfig
 from app.utils.configs import OTLPConfig
@@ -135,6 +136,15 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     cache_backend = providers.Singleton(
         InMemoryCacheBackend,
         config=cache_config,
+    )
+
+    http_client_config = providers.Singleton(
+        HttpClientConfig,
+        base_url=config.HTTP_CLIENT.BASE_URL,
+        timeout_seconds=config.HTTP_CLIENT.TIMEOUT_SECONDS,
+        max_connections=config.HTTP_CLIENT.MAX_CONNECTIONS.as_int(),
+        max_keepalive_connections=config.HTTP_CLIENT.MAX_KEEPALIVE_CONNECTIONS.as_int(),
+        keepalive_expiry_seconds=config.HTTP_CLIENT.KEEPALIVE_EXPIRY_SECONDS,
     )
 
     circuit_breaker_config = providers.Singleton(
