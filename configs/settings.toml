@@ -56,3 +56,19 @@ PROFILING.ENABLED = false
 PROFILING.OUTPUT_DIR = "profiles"
 PROFILING.SORT_BY = "cumulative"  # cumulative, time, calls
 PROFILING.TOP_N = 50
+
+# Rate limiting (in-memory)
+RATE_LIMIT.ENABLED = false
+RATE_LIMIT.REQUESTS_PER_WINDOW = 100
+RATE_LIMIT.WINDOW_SECONDS = 60.0
+RATE_LIMIT.KEY_HEADER = ""  # e.g. "X-API-Key" or "" for client IP
+
+# In-memory cache
+CACHE.ENABLED = false
+CACHE.TTL_SECONDS = 300
+CACHE.MAX_SIZE = 10000
+
+# Circuit breaker for external calls
+CIRCUIT_BREAKER.ENABLED = false
+CIRCUIT_BREAKER.FAILURE_THRESHOLD = 5
+CIRCUIT_BREAKER.RECOVERY_TIMEOUT_SECONDS = 30.0

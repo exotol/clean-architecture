@@ -102,3 +102,28 @@ class ProfilingConfig(BaseModel):
     output_dir: str = "profiles"
     sort_by: str = "cumulative"  # cumulative, time, calls
     top_n: int = 50
+
+
+class RateLimitConfig(BaseModel):
+    """Configuration for rate limiting (in-memory)."""
+
+    enabled: bool = False
+    requests_per_window: int = 100
+    window_seconds: float = 60.0
+    key_header: str | None = None  # header value, or client IP if None
+
+
+class CacheConfig(BaseModel):
+    """Configuration for in-memory cache."""
+
+    enabled: bool = False
+    ttl_seconds: int = 300
+    max_size: int = 10_000
+
+
+class CircuitBreakerConfig(BaseModel):
+    """Configuration for circuit breaker on external calls."""
+
+    enabled: bool = False
+    failure_threshold: int = 5
+    recovery_timeout_seconds: float = 30.0
