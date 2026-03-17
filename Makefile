@@ -103,6 +103,16 @@ mypy.check:
 	@echo "Запустить проверку MYPY типизации"
 	uv run mypy --install-types --non-interactive .
 
+fmt:
+	@echo "Форматирование (ruff format)"
+	$(MAKE) ruff.format
+
+check:
+	@echo "Quality gate: lint + types + unit tests + coverage"
+	$(MAKE) ruff.check
+	$(MAKE) mypy.check
+	$(MAKE) run.unit.cov
+
 install.pre-commit:
 	@echo "Установить сконфигрурированные пре-коммит хуки"
 	uv run pre-commit install
