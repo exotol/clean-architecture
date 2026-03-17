@@ -46,13 +46,18 @@ Run on all files (optional):
 uv run pre-commit run --all-files
 ```
 
-## Testing rules
+## Testing rules (mandatory standard)
+
+All tests must follow the **Test Writing Standard** in `docs/testing.md` (section «Стандарт написания тестов»):
+
+- **AAA:** every test has `# Arrange`, `# Act`, `# Assert` comments.
+- **Data-driven / parametrize:** one test = 7+ scenarios (where applicable). Two or more similar scenarios → one test function with `@pytest.mark.parametrize(("entity", "expected"), [pytest.param(Entity(...), Expected(...), id="..."), ...])`; aim for 7+ cases per test. Entity/Expected live in `tests/schemas/` (unit, integration, or e2e). Every case must have an `id=...`.
+- **Assert with message:** no bare `assert x == y`; use `assert condition, (f"expected ..., got ...")`.
 
 - **Unit tests**: `tests/unit/` (no real external services).
 - **Integration/E2E**: add when behavior crosses boundaries (API, persistence, external services).
-- **Data-driven**: prefer `tests/schemas/` + `@pytest.mark.parametrize(..., id=...)`.
 
-See `docs/testing.md` for structure and examples.
+See `docs/testing.md` for the full standard, structure, and examples.
 
 ## Architecture rules
 

@@ -4,6 +4,67 @@
 
 Проект использует **pytest** с **data-driven** подходом и строгой типизацией тестовых данных.
 
+## Стандарт написания тестов (обязателен для агентов)
+
+Все тесты (unit, integration, e2e) **должны** соответствовать этому стандарту. Агенты и контрибьюторы не имеют права ослаблять или обходить эти правила.
+
+### 1. Структура AAA (Arrange — Act — Assert)
+
+- В каждом тесте явно помечайте три секции комментариями: `# Arrange`, `# Act`, `# Assert`.
+- **Arrange** — подготовка данных, моков, конфигурации.
+- **Act** — вызов проверяемого кода (в рамках одного кейса parametrize — один Act).
+- **Assert** — проверки результата; каждая проверка — отдельный `assert` с сообщением (см. п. 3).
+
+### 2. Data-driven и parametrize
+
+- Если у тестируемого поведения **два и более однотипных сценария** (разные входы/ожидания при той же логике) — тест **обязательно** оформляется через `@pytest.mark.parametrize`. Целевое количество сценариев в одном тесте — **от 7+** (где применимо).
+- Имена параметров: `("entity", "expected")`. Входные данные — в типе `*Entity`, ожидаемый результат — в типе `*Expected`.
+- Схемы Entity/Expected хранятся в `tests/schemas/`: в `tests/schemas/unit/`, `tests/schemas/integration/`, `tests/schemas/e2e/` в соответствии с типом теста. Использовать Pydantic `BaseModel` или `dataclass` с явными типами.
+- У каждого варианта в parametrize **обязателен** осмысленный `id=...` (латиница, snake_case или короткое описание), чтобы в отчёте pytest было понятно, какой сценарий упал.
+
+Формат:
+
+```python
+@pytest.mark.parametrize(
+    ("entity", "expected"),
+    [
+        pytest.param(MyEntity(...), MyExpected(...), id="success_case"),
+        pytest.param(MyEntity(...), MyExpected(...), id="error_case"),
+    ],
+)
+def test_something(entity: MyEntity, expected: MyExpected) -> None:
+    # Arrange
+    ...
+    # Act
+    result = ...
+    # Assert
+    assert result == expected.value, (f"Expected {expected.value}, got {result}")
+```
+
+- Исключение: один уникальный сценарий без вариаций (например, один хендлер с одной проверкой) может быть без parametrize, но при появлении второго аналогичного сценария тест переводится на parametrize.
+
+### 3. Assert с сообщением
+
+- **Запрещено** использовать «голый» assert: `assert x == y`.
+- **Обязательно** для каждого assert указывать сообщение в формате:  
+  `assert условие, (f"описание: ожидалось ..., получено ...")`  
+  чтобы при падении теста было сразу ясно, что именно не совпало (actual vs expected).
+- Проверки вызовов моков (call_count, call_args) тоже оформляются через явный assert с сообщением, а не только через `.assert_called_once()` без пояснения.
+
+### 4. Один тест — много сценариев (от 7+)
+
+- Один тест (одна функция) покрывает **много сценариев** за счёт `@pytest.mark.parametrize`: каждый кейс (entity/expected) — отдельный сценарий. Цель — **от 7+ сценариев** в одном тесте, где это применимо. Не плодить отдельные функции теста для каждого варианта; объединять однотипные сценарии в один тест с parametrize.
+
+### 5. Итоговый чек-лист для каждого теста
+
+- [ ] Есть комментарии `# Arrange`, `# Act`, `# Assert`.
+- [ ] Два и более однотипных сценария — использован `@pytest.mark.parametrize(("entity", "expected"), ..., id=...)`; цель — от 7+ кейсов в одном тесте где применимо.
+- [ ] Entity/Expected из `tests/schemas/...` (или локальные типы с явной структурой).
+- [ ] У каждого assert есть сообщение с фактическим и ожидаемым значением.
+- [ ] Покрытие не снижается; новый код покрыт тестами.
+
+---
+
 ## Неприкосновенные правила качества (в т.ч. для агентов)
 
 - **Запрещено подавлять проверки в коде**: `# noqa`, `# type: ignore` и аналоги недопустимы.
@@ -44,7 +105,7 @@ tests/
 - Domain logic
 - Utilities
 
-**Пример:**
+**Пример (стандарт: AAA, parametrize, assert с сообщением):**
 ```python
 # tests/unit/application/test_search_service.py
 @pytest.mark.parametrize(
@@ -63,11 +124,16 @@ async def test_search_success(
     entity: SearchServiceEntity,
     expected: SearchServiceExpected,
 ) -> None:
+    # Arrange
     mock_repository.search.return_value = entity.mock_return
-    
+
+    # Act
     actual_results = await search_service.search(query=entity.query)
-    
-    assert len(actual_results) == expected.count
+
+    # Assert
+    assert len(actual_results) == expected.count, (
+        f"Expected count {expected.count}, got {len(actual_results)}"
+    )
 ```
 
 ### 2. Integration Tests (`tests/integration/`)
@@ -97,7 +163,7 @@ async def test_search_repository_returns_documents():
 - Request/Response schemas
 - HTTP status codes
 
-**Пример:**
+**Пример (стандарт: AAA, parametrize, assert с сообщением):**
 ```python
 # tests/e2e/api/test_search_endpoint.py
 @pytest.mark.parametrize(
@@ -115,9 +181,13 @@ async def test_search_endpoint(
     entity: SearchEndpointEntity,
     expected: SearchEndpointExpected,
 ) -> None:
+    # Act
     response = await client.post("/api/v1/search", json={"query": entity.query})
-    
-    assert response.status_code == expected.status_code
+
+    # Assert
+    assert response.status_code == expected.status_code, (
+        f"Expected status {expected.status_code}, got {response.status_code}"
+    )
 ```
 
 ### 4. Performance Tests (`tests/performance/`)
@@ -231,11 +301,11 @@ pytest tests -n auto  # требует pytest-xdist
 
 ## Best Practices
 
-1. **Один тест — один сценарий**
-2. **Используйте `id` в parametrize** для читаемых отчётов
-3. **Мокайте внешние зависимости** в unit-тестах
-4. **Используйте fixtures** для повторяющейся setup-логики
-5. **Описывайте expected** результаты явно
+1. **Один тест — от 7+ сценариев:** объединять однотипные случаи в один тест с parametrize (entity/expected + id); целевое число кейсов — от 7+ где применимо.
+2. **Обязательно `id` в parametrize** — для читаемых отчётов и однозначной идентификации сценария.
+3. **Мокайте внешние зависимости** в unit-тестах.
+4. **Используйте fixtures** для повторяющейся setup-логики.
+5. **Описывайте expected** явно в схемах; каждый assert — с сообщением (actual vs expected).
 
 ## Следующие шаги
 
