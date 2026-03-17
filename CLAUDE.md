@@ -25,6 +25,7 @@ make run.pytest
 - **Ruff + mypy strict** must pass. **No suppression:** `# noqa` and `# type: ignore` are **forbidden** in code; fix the underlying issue instead. Do not add new ignore rules in `pyproject.toml`; solve problems in code.
 - **No “drive-by refactors”** (LEAN).
 - **No secrets in repo**. Use Dynaconf configs and examples only.
+- **Settings access — strict:** only `settings.SECTION.KEY` is allowed. Forbidden: `settings.get(...)`, `getattr(settings.SECTION, "KEY", default)` and any other form. Enforced by `make check.settings` (see AGENTS.md §7).
 
 ## Where to look
 

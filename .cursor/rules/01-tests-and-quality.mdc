@@ -35,4 +35,8 @@ alwaysApply: true
 - **Разрешено:** только константы (`UPPER_SNAKE_CASE`) в `app.core.constants` и типовые переменные (`TypeVar`, `ParamSpec`) для аннотаций.
 - Все зависимости и состояние приложения — через **Dependency Injection** (`app.core.containers`, FastAPI `Depends()`).
 
+## Настройки (Dynaconf) — жёстко
+
+- Допустимо **только** `settings.SECTION.KEY`. Запрещены: `settings.get(...)`, `getattr(settings.SECTION, "KEY", default)` и любые иные формы. Проверка: `make check.settings`. Подробно: **AGENTS.md** §7.
+
 Подробности: **AGENTS.md**, **docs/testing.md**, **pyproject.toml**.
