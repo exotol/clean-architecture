@@ -16,8 +16,13 @@ class ILoggingStrategy(Protocol):
         kwargs: dict[str, Any],
         *,
         use_log_args: bool,
+        named_args: dict[str, Any] | None = None,
     ) -> Any:
-        """Log start of execution."""
+        """Log start of execution.
+
+        If named_args is provided and use_log_args is True, log by param names;
+        otherwise use args/kwargs.
+        """
         ...
 
     def log_success(
