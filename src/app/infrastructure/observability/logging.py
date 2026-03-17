@@ -7,6 +7,7 @@ from typing import Any
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from collections.abc import MutableMapping
 
 from opentelemetry import trace
@@ -28,6 +29,16 @@ if TYPE_CHECKING:
     from app.utils.configs import OTLPConfig
 
 
+def _drop_color_message(
+    _logger: Any,
+    _method_name: str,
+    event_dict: MutableMapping[str, Any],
+) -> Mapping[str, Any]:
+    """Remove color_message from uvicorn/granian to avoid cluttering JSON."""
+    event_dict.pop("color_message", None)
+    return event_dict
+
+
 def _add_trace_span_from_record(
     _logger: Any,
     _method_name: str,
@@ -45,21 +56,35 @@ def _build_shared_processors() -> list[Any]:
     """Processors shared by structlog and ProcessorFormatter."""
     return [
         structlog.contextvars.merge_contextvars,
+        structlog.stdlib.add_logger_name,
         structlog.processors.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.stdlib.ExtraAdder(),
+        _drop_color_message,
     ]
 
 
-def _build_structlog_formatter() -> structlog.stdlib.ProcessorFormatter:
-    """Build ProcessorFormatter for unified JSON (structlog + stdlib)."""
+def _build_structlog_formatter(
+    logger_config: LoggerConfig,
+) -> structlog.stdlib.ProcessorFormatter:
+    """Build ProcessorFormatter: JSON (prod) or colored console (dev)."""
+    final_processors: list[Any] = [
+        _add_trace_span_from_record,
+        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+    ]
+    if logger_config.log_format == "json":
+        final_processors.append(structlog.processors.JSONRenderer())
+    else:
+        final_processors.append(
+            structlog.dev.ConsoleRenderer(colors=True),
+        )
     return structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=_build_shared_processors(),
-        processors=[
-            _add_trace_span_from_record,
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.processors.JSONRenderer(),
-        ],
+        processors=final_processors,
     )
 
 
@@ -97,9 +122,18 @@ def _configure_structlog() -> None:
     )
 
 
+def _apply_muted_loggers(mute_loggers: list[str]) -> None:
+    """Attach NullHandler to loggers that should produce no output."""
+    for logger_name in mute_loggers:
+        muted = logging.getLogger(logger_name)
+        muted.handlers.clear()
+        muted.propagate = False
+        muted.addHandler(logging.NullHandler())
+
+
 def _configure_stdlib_handlers(logger_config: LoggerConfig) -> None:
     """Attach ProcessorFormatter handlers to root and named loggers."""
-    formatter = _build_structlog_formatter()
+    formatter = _build_structlog_formatter(logger_config)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logger_config.level.value)
     console_handler.setFormatter(formatter)
@@ -125,16 +159,18 @@ def _configure_stdlib_handlers(logger_config: LoggerConfig) -> None:
         if file_handler is not None:
             child.addHandler(file_handler)
 
+    _apply_muted_loggers(logger_config.mute_loggers)
+
 
 def setup_logging(
     logger_config: LoggerConfig,
     otlp_config: OTLPConfig,
 ) -> None:
-    """Configure structlog on top of stdlib logging for unified JSON output.
+    """Configure structlog on top of stdlib logging (JSON or colored text).
 
     Business code uses structlog.get_logger() for context and clean API;
-    uvicorn, sqlalchemy, httpx (stdlib) logs are formatted the same via
-    ProcessorFormatter.
+    uvicorn, granian, httpx (stdlib) logs are formatted the same via
+    ProcessorFormatter. log_format "text" uses ConsoleRenderer for local dev.
     """
     _configure_otel(otlp_config)
     _configure_structlog()
