@@ -21,6 +21,16 @@ class OpentelemetryMetricsStrategy(IMetricsStrategy):
             description=constants.METRICS_REQUEST_DURATION_DESC,
             unit=constants.METRICS_REQUEST_DURATION_UNIT,
         )
+        self.sla_requests_total = self.meter.create_counter(
+            name=constants.METRICS_SLA_REQUESTS_TOTAL_NAME,
+            description=constants.METRICS_SLA_REQUESTS_TOTAL_DESC,
+            unit=constants.METRICS_SLA_REQUESTS_TOTAL_UNIT,
+        )
+        self.sla_latency = self.meter.create_histogram(
+            name=constants.METRICS_SLA_LATENCY_NAME,
+            description=constants.METRICS_SLA_LATENCY_DESC,
+            unit=constants.METRICS_SLA_LATENCY_UNIT,
+        )
 
     def record_request(
         self,
@@ -36,3 +46,15 @@ class OpentelemetryMetricsStrategy(IMetricsStrategy):
 
         self.requests_total.add(1, attributes)
         self.request_duration.record(duration, {"event": event_name})
+
+    def record_sla(
+        self,
+        event_name: str,
+        duration: float,
+        *,
+        success: bool,
+    ) -> None:
+        """Record SLA metrics (latency + success/error for error rate)."""
+        status = "success" if success else "error"
+        self.sla_requests_total.add(1, {"event": event_name, "status": status})
+        self.sla_latency.record(duration, {"event": event_name})

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
+
+import structlog
 
 from app.domain.interfaces.observability import ILoggingStrategy
 
@@ -11,11 +12,14 @@ from app.domain.interfaces.observability import ILoggingStrategy
 if TYPE_CHECKING:
     from app.utils.serializer import ItemSerializer
 
-logger = logging.getLogger(__name__)
+
+def _logger() -> structlog.stdlib.BoundLogger:
+    """Return structlog logger for this module (stdlib-backed, same JSON)."""
+    return structlog.stdlib.get_logger(__name__)
 
 
 class StandardLoggingStrategy(ILoggingStrategy):
-    """Logging strategy using standard Python logging.
+    """Logging strategy using structlog on top of stdlib logging.
 
     Stateless: all configuration passed via method arguments.
     Uses `ItemSerializer` for safe, non-recursive serialization.
@@ -38,8 +42,9 @@ class StandardLoggingStrategy(ILoggingStrategy):
             context["args"] = self._serializer.serialize(args)
             context["kwargs"] = self._serializer.serialize(kwargs)
 
-        # Use extra to pass context to JSONFormatter
-        logger.info("%s_SEND", event_name, extra=context)
+        # Omit "event" to avoid duplicate with structlog event arg
+        log_kw = {k: v for k, v in context.items() if k != "event"}
+        _logger().info(f"{event_name}_SEND", **log_kw)
         return context
 
     @override
@@ -51,15 +56,19 @@ class StandardLoggingStrategy(ILoggingStrategy):
         *,
         use_log_result: bool,
     ) -> None:
-        # context is the dict we returned in log_start
-        log_context = context if isinstance(context, dict) else {}
+        log_context = dict(context) if isinstance(context, dict) else {}
 
         if use_log_result:
             log_context["result"] = self._serializer.serialize(result)
-
-        logger.info("%s_SUCCESS", event_name, extra=log_context)
+        log_kw = {k: v for k, v in log_context.items() if k != "event"}
+        _logger().info(f"{event_name}_SUCCESS", **log_kw)
 
     @override
     def log_error(self, event_name: str, exc: Exception, context: Any) -> None:
         log_context = context if isinstance(context, dict) else {}
-        logger.error("%s_ERROR", event_name, exc_info=exc, extra=log_context)
+        log_kw = {k: v for k, v in log_context.items() if k != "event"}
+        _logger().error(
+            f"{event_name}_ERROR",
+            exc_info=exc,
+            **log_kw,
+        )

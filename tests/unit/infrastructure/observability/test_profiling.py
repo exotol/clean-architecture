@@ -108,5 +108,6 @@ def test_ensure_output_dir(
         # Act is in init
         mock_path.assert_called_with(profiling_config.output_dir)
         mock_path.return_value.mkdir.assert_called_once_with(
-            parents=True, exist_ok=True,
+            parents=True,
+            exist_ok=True,
         )
