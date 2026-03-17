@@ -30,3 +30,12 @@ repos:
       - id: commitizen
         stages: [commit-msg]
 
+  - repo: local
+    hooks:
+      - id: validate-commit-msg-ru
+        name: validate commit message language (RU)
+        entry: python3 scripts/validate_commit_message_ru.py
+        language: system
+        stages: [commit-msg]
+        pass_filenames: false
+
