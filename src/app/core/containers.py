@@ -6,6 +6,9 @@ from granian import Granian
 from granian.constants import Interfaces
 
 from app.application.services.search_service import SearchService
+from app.infrastructure.cache.memory import InMemoryCacheBackend
+from app.infrastructure.health.readiness import DefaultReadinessChecker
+from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.infrastructure.observability.strategies.logging import (
     StandardLoggingStrategy,
 )
@@ -18,10 +21,14 @@ from app.infrastructure.observability.strategies.tracing import (
 from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
+from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
+from app.utils.configs import CacheConfig
+from app.utils.configs import CircuitBreakerConfig
 from app.utils.configs import LoggerConfig
 from app.utils.configs import MetricsConfig
 from app.utils.configs import OTLPConfig
 from app.utils.configs import ProfilingConfig
+from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import SerializationConfig
 from app.utils.configs import ServerConfig
@@ -108,6 +115,38 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     tracing_strategy = providers.Singleton(OpentelemetryTracingStrategy)
     metrics_strategy = providers.Singleton(OpentelemetryMetricsStrategy)
 
+    rate_limit_config = providers.Singleton(
+        RateLimitConfig,
+        enabled=config.RATE_LIMIT.ENABLED,
+        requests_per_window=config.RATE_LIMIT.REQUESTS_PER_WINDOW.as_int(),
+        window_seconds=config.RATE_LIMIT.WINDOW_SECONDS,
+        key_header=config.RATE_LIMIT.KEY_HEADER,
+    )
+    rate_limit_store = providers.Singleton(RateLimitStore)
+
+    cache_config = providers.Singleton(
+        CacheConfig,
+        enabled=config.CACHE.ENABLED,
+        ttl_seconds=config.CACHE.TTL_SECONDS.as_int(),
+        max_size=config.CACHE.MAX_SIZE.as_int(),
+    )
+    cache_backend = providers.Singleton(
+        InMemoryCacheBackend,
+        config=cache_config,
+    )
+
+    circuit_breaker_config = providers.Singleton(
+        CircuitBreakerConfig,
+        enabled=config.CIRCUIT_BREAKER.ENABLED,
+        failure_threshold=config.CIRCUIT_BREAKER.FAILURE_THRESHOLD.as_int(),
+        recovery_timeout_seconds=config.CIRCUIT_BREAKER.RECOVERY_TIMEOUT_SECONDS,
+    )
+    circuit_breaker = providers.Singleton(
+        CircuitBreaker,
+        config=circuit_breaker_config,
+        name="search",
+    )
+
 
 class ServerContainer(containers.DeclarativeContainer):
     """DI container for server runtime wiring."""
@@ -144,3 +183,5 @@ class AppContainer(containers.DeclarativeContainer):
         SearchService,
         repository=search_repository,
     )
+
+    readiness_checker = providers.Singleton(DefaultReadinessChecker)

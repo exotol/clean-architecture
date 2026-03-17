@@ -50,6 +50,12 @@ class Reasons:
         message="Request validation failed",
         title="Validation Error",
     )
+    rate_limit_exceeded = Reason(
+        urn_type_error="urn:error:rate-limit-exceeded",
+        code="RATE_LIMIT_EXCEEDED",
+        message="Too many requests. Please retry after the indicated time.",
+        title="Rate Limit Exceeded",
+    )
 
 
 class ProblemDetail(BaseModel):
