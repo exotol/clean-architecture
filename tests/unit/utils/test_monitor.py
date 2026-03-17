@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
+from app.core.containers import AppContainer
 from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
+from app.utils.monitor import _get_bound_arguments
 from app.utils.monitor import monitor
-
-
-if TYPE_CHECKING:
-    from app.core.containers import AppContainer
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +37,46 @@ def mock_tracing_strategy(di_container: AppContainer) -> MagicMock:
     return mock_tracing
 
 
+# --- _get_bound_arguments ---
+def test_get_bound_arguments_resolves_positional_and_keyword() -> None:
+    # Arrange
+    def func(a: int, b: int) -> int:
+        return a + b
+
+    # Act
+    out = _get_bound_arguments(func, (1, 2), {})
+
+    # Assert
+    assert out == {"a": 1, "b": 2}, (
+        f"Expected {{'a': 1, 'b': 2}}, got {out}"
+    )
+
+
+def test_get_bound_arguments_excludes_self() -> None:
+    # Arrange: use unbound function with explicit "self" param
+    def method(self: object, x: int) -> int:
+        return x
+
+    # Act: bind (instance, 3) -> bound.arguments has self and x; we drop self
+    out = _get_bound_arguments(method, (object(), 3), {})
+
+    # Assert
+    assert "self" not in out, (f"Expected no 'self' in result, got {out}")
+    assert out == {"x": 3}, (f"Expected {{'x': 3}}, got {out}")
+
+
+def test_get_bound_arguments_bind_error_returns_empty() -> None:
+    # Arrange: pass wrong number of args so bind fails
+    def func(a: int, b: int) -> int:
+        return a + b
+
+    # Act
+    out = _get_bound_arguments(func, (1,), {})
+
+    # Assert
+    assert out == {}, (f"Expected empty dict on bind error, got {out}")
+
+
 # --- Sync Tests ---
 def test_monitor_sync_success(
     di_container: AppContainer,
@@ -54,7 +91,9 @@ def test_monitor_sync_success(
     result = sync_func(1, 2)
 
     # Assert
-    assert result == 3, f"Expected sync_func(1, 2) = 3, got {result}"
+    assert result == 3, (
+        f"Expected sync_func(1, 2) = 3, got {result}"
+    )
     logging_strategy = di_container.infra_container.logging_strategy()
     metrics_strategy = di_container.infra_container.metrics_strategy()
     mock_tracing_strategy.start_span.assert_called_once_with("test_sync")
@@ -132,7 +171,9 @@ def test_monitor_sync_suppress_exception() -> None:
     result = sync_fail()
 
     # Assert
-    assert result is None, f"Expected None when reraise=False, got {result!r}"
+    assert result is None, (
+        f"Expected None when reraise=False, got {result!r}"
+    )
 
 
 def test_monitor_callback_error(di_container: AppContainer) -> None:
@@ -170,7 +211,9 @@ async def test_monitor_async_success(di_container: AppContainer) -> None:
     result = await async_func(5)
 
     # Assert
-    assert result == 10, f"Expected async_func(5) = 10, got {result}"
+    assert result == 10, (
+        f"Expected async_func(5) = 10, got {result}"
+    )
     metrics_strategy = di_container.infra_container.metrics_strategy()
     assert metrics_strategy.record_request.call_count == 1, (
         f"Expected record_request called once, "
@@ -215,4 +258,6 @@ async def test_monitor_async_suppress_returns_none() -> None:
     result = await async_fail()
 
     # Assert
-    assert result is None, f"Expected None when reraise=False, got {result!r}"
+    assert result is None, (
+        f"Expected None when reraise=False, got {result!r}"
+    )

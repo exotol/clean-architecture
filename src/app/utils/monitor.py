@@ -103,6 +103,7 @@ class _MonitoringHandler:
         self,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
+        named_args: dict[str, Any] | None = None,
     ) -> tuple[float, Any]:
         """Logs start and returns (start_time, log_context)."""
         context = self.logging_strategy.log_start(
@@ -110,6 +111,7 @@ class _MonitoringHandler:
             args,
             kwargs,
             use_log_args=self.use_log_args,
+            named_args=named_args,
         )
         return perf_counter(), context
 
@@ -171,6 +173,25 @@ class _MonitoringHandler:
             logger.exception("monitor action_when_exception failed")
 
 
+def _get_bound_arguments(
+    func: Callable[..., Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Resolve param names and values (including defaults) via inspect.
+
+    Returns a dict param_name -> value, excluding 'self'. On bind/signature
+    errors returns empty dict so callers can fall back to args/kwargs.
+    """
+    try:
+        sig = inspect.signature(func)
+        bound = sig.bind(*args, **kwargs)
+        bound.apply_defaults()
+        return {k: v for k, v in bound.arguments.items() if k != "self"}
+    except (ValueError, TypeError):
+        return {}
+
+
 def _classify_error(exc: Exception) -> str:
     if isinstance(exc, BusinessError):
         return "business"
@@ -194,7 +215,12 @@ def _async_wrapper[**P, R](
         )
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
-            start_time, context = handler.log_start(args, kwargs)
+            named = (
+                _get_bound_arguments(func, args, kwargs)
+                if options.use_log_args
+                else None
+            )
+            start_time, context = handler.log_start(args, kwargs, named)
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:
@@ -224,7 +250,12 @@ def _sync_wrapper[**P, R](
         )
         span = handler.tracing_strategy.start_span(handler.event_name)
         with span:
-            start_time, context = handler.log_start(args, kwargs)
+            named = (
+                _get_bound_arguments(func, args, kwargs)
+                if options.use_log_args
+                else None
+            )
+            start_time, context = handler.log_start(args, kwargs, named)
             try:
                 result = func(*args, **kwargs)
             except Exception as exc:

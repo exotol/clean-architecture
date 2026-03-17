@@ -10,6 +10,7 @@ class LogStartEntity:
     args: tuple[Any, ...]
     kwargs: dict[str, Any]
     use_log_args: bool
+    named_args: dict[str, Any] | None = None
 
 
 @dataclass
@@ -19,6 +20,7 @@ class LogStartExpected:
     kwargs_in_bind: bool
     event_in_bind: str
     info_called_with: str
+    named_keys: list[str] | None = None  # when set, context has these keys
 
 
 @dataclass
@@ -43,4 +45,5 @@ class LogErrorEntity:
 
 @dataclass
 class LogErrorExpected:
-    exception_called_with: str
+    event_message: str
+    exc_info_is_exc: bool

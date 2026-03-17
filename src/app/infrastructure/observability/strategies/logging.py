@@ -36,11 +36,16 @@ class StandardLoggingStrategy(ILoggingStrategy):
         kwargs: dict[str, Any],
         *,
         use_log_args: bool,
+        named_args: dict[str, Any] | None = None,
     ) -> Any:
         context: dict[str, Any] = {"event": event_name}
         if use_log_args:
-            context["args"] = self._serializer.serialize(args)
-            context["kwargs"] = self._serializer.serialize(kwargs)
+            if named_args:
+                for k, v in named_args.items():
+                    context[k] = self._serializer.serialize(v)
+            else:
+                context["args"] = self._serializer.serialize(args)
+                context["kwargs"] = self._serializer.serialize(kwargs)
 
         # Omit "event" to avoid duplicate with structlog event arg
         log_kw = {k: v for k, v in context.items() if k != "event"}
