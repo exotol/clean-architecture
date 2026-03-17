@@ -33,6 +33,7 @@ from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import SerializationConfig
 from app.utils.configs import ServerConfig
+from app.utils.http_client import HttpClientResource
 from app.utils.serializer import ItemSerializer
 
 
@@ -145,6 +146,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         max_connections=config.HTTP_CLIENT.MAX_CONNECTIONS.as_int(),
         max_keepalive_connections=config.HTTP_CLIENT.MAX_KEEPALIVE_CONNECTIONS.as_int(),
         keepalive_expiry_seconds=config.HTTP_CLIENT.KEEPALIVE_EXPIRY_SECONDS,
+    )
+    http_client = providers.Resource(
+        HttpClientResource,
+        config=http_client_config,
     )
 
     circuit_breaker_config = providers.Singleton(
