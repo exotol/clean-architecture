@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import cast
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
@@ -15,6 +16,8 @@ from app.utils.configs import load_settings
 if TYPE_CHECKING:
     from granian.server import MPServer
     from granian.server import MTServer
+
+    from app.core.types import ConfigFromDict
 
 
 @inject
@@ -37,7 +40,7 @@ def main(
 def init_server_container() -> None:
     """Initialize DI container configuration for the server runtime."""
     container = ServerContainer()
-    container.infra_container.config.from_dict(  # type: ignore[attr-defined]
+    cast("ConfigFromDict", container.infra_container.config).from_dict(
         load_settings().as_dict(),
     )
 
