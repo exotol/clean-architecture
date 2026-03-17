@@ -5,7 +5,10 @@ from app.domain.interfaces.search_repository import ISearchRepository
 
 
 class SearchRepository(ISearchRepository):
+    """Search repository implementation (mock)."""
+
     async def search(self, query: str) -> list[Document]:  # noqa: PLR6301
+        """Search documents by query (mock implementation)."""
         # Mock implementation
         # In a real scenario, this would call OpenSearch/Elasticsearch
         return [

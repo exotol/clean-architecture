@@ -95,9 +95,10 @@ def test_log_start(
     else:
         assert "kwargs" not in context
 
-    # Verify logger called with extra=context
+    # Verify logger called with extra=context (lazy formatting)
     mock_logger.info.assert_called_with(
-        expected.info_called_with,
+        "%s_SEND",
+        entity.event_name,
         extra=context,
     )
 
@@ -160,21 +161,19 @@ def test_log_success(
         assert "result" not in context
 
     mock_logger.info.assert_called_with(
-        expected.info_called_with,
+        "%s_SUCCESS",
+        entity.event_name,
         extra=context,
     )
 
 
 @pytest.mark.parametrize(
-    ("entity", "expected"),
+    "entity",
     [
         pytest.param(
             schemas.LogErrorEntity(
                 event_name="TEST_EVENT",
                 exc=ValueError("test error"),
-            ),
-            schemas.LogErrorExpected(
-                exception_called_with="TEST_EVENT_ERROR",
             ),
             id="log_error",
         ),
@@ -184,7 +183,6 @@ def test_log_error(
     mock_logger: MagicMock,
     mock_serializer: MagicMock,
     entity: schemas.LogErrorEntity,
-    expected: schemas.LogErrorExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
     context = {"event": entity.event_name}
@@ -192,7 +190,8 @@ def test_log_error(
     strategy.log_error(entity.event_name, entity.exc, context)
 
     mock_logger.error.assert_called_with(
-        expected.exception_called_with,
+        "%s_ERROR",
+        entity.event_name,
         exc_info=entity.exc,
         extra=context,
     )

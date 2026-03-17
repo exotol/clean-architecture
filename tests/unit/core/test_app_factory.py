@@ -65,14 +65,7 @@ def test_create_app() -> None:
         mock_fastapi_cls.return_value = mock_app
 
         # Act
-        # create_app calls load_settings(), we need to make sure the returned settings
-        # has a valid security config or at least mocks that behave nicely.
-        # If create_app uses settings.security which is validated, use a mock that behaves like it
-        # However, the error came from dependency injection provider?
-        # "src/dependency_injector/providers.pxd:604: ValidationError"
-        # It seems AppContainer expects SecurityConfig.
-
-        # Let's mock create_middleware_list to avoid complexity in this unit test
+        # Mock create_middleware_list to keep this test focused on wiring.
         with patch(
             "app.core.app_factory.create_middleware_list",
         ) as mock_create_middleware:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging.config
 from typing import TYPE_CHECKING
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
@@ -12,7 +13,6 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter
-from pythonjsonlogger import jsonlogger
 
 from app.core.constants import OTLP_LOCAL_ENDPOINT
 
@@ -26,6 +26,7 @@ def setup_logging(
     logger_config: LoggerConfig,
     otlp_config: OTLPConfig,
 ) -> None:
+    """Configure standard logging and optional OpenTelemetry tracing."""
     # 0. Configure OpenTelemetry
     if not isinstance(trace.get_tracer_provider(), TracerProvider):
         resource = Resource.create(
@@ -69,13 +70,16 @@ def setup_logging(
             "level": logger_config.level.value,
         }
 
-    logging_config = {
+    logging_config: dict[str, Any] = {
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {
             "json": {
-                "()": jsonlogger.JsonFormatter,
-                "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(otelTraceID)s %(otelSpanID)s",
+                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "format": (
+                    "%(asctime)s %(levelname)s %(name)s %(message)s "
+                    "%(otelTraceID)s %(otelSpanID)s"
+                ),
                 "rename_fields": {
                     "asctime": "timestamp",
                     "levelname": "level",

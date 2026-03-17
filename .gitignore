@@ -10,3 +10,5 @@ __pycache__/
 artifacts/
 *.pycprofiles/
 *.prof
+.coverage
+coverage.xml

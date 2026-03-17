@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import cProfile
+from datetime import UTC
 from datetime import datetime
 import io
 import logging
@@ -84,7 +85,7 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         request: Request,
     ) -> None:
         """Save profile stats to file."""
-        timestamp = datetime.now(tz=datetime.UTC).strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S_%f")
         path_safe = request.url.path.replace("/", "_").strip("_") or "root"
         filename = f"{timestamp}_{request.method}_{path_safe}.prof"
         filepath = Path(self.config.output_dir) / filename

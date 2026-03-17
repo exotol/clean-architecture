@@ -48,6 +48,7 @@ def setup_locust_metrics() -> None:
         """
         Record metrics on every request.
         """
+        _ = (response_length, kwargs)
         attributes = {"method": request_type, "name": name}
 
         if exception:

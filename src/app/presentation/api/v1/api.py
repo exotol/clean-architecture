@@ -6,6 +6,7 @@ from app.presentation.api.v1.endpoints import search
 
 
 def config_routers_endpoints_v1() -> APIRouter:
+    """Configure API v1 routers."""
     router = APIRouter()
     router.include_router(search.router)
     return router

@@ -12,10 +12,10 @@ from app.utils.configs import ProfilingConfig
 
 
 @pytest.fixture
-def profiling_config() -> ProfilingConfig:
+def profiling_config(tmp_path) -> ProfilingConfig:
     return ProfilingConfig(
         enabled=True,
-        output_dir="/tmp/profiles",
+        output_dir=str(tmp_path / "profiles"),
         top_n=10,
         sort_by="cumulative",
     )
@@ -38,7 +38,7 @@ async def test_profiling_middleware_disabled(
     mock_call_next = MagicMock()
     mock_response = Response()
 
-    async def call_next(req):
+    async def call_next(_req):
         return mock_response
 
     mock_call_next.side_effect = call_next
@@ -70,7 +70,7 @@ async def test_profiling_middleware_enabled(
     MagicMock()
     mock_response = Response()
 
-    async def call_next(req):
+    async def call_next(_req):
         return mock_response
 
     # Act

@@ -28,6 +28,7 @@ async def generate_answer(
         Provide[AppContainer.search_service],
     ),
 ) -> dict[str, SearchResponse]:
+    """Generate an answer for the request using the search service."""
     documents = await search_service.search(query=request.query)
 
     # Mapper Logic (Domain Entity -> Schema)

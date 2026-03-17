@@ -8,6 +8,7 @@ from app.presentation.api.common.endpoints import root
 
 
 def common_endpoints() -> APIRouter:
+    """Create router for common endpoints."""
     router = APIRouter()
     router.include_router(healthcheck.router)
     router.include_router(metrics.router)

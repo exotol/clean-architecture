@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import Request
 from fastapi import status as http_status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.constants import NO_PARAMS
@@ -204,15 +205,17 @@ def request_validation_handler(
     )
 
     # Логируем как warning
+    validation_exc = exc if isinstance(exc, RequestValidationError) else None
+    errors = validation_exc.errors() if validation_exc is not None else []
     logger.warning(
         "Validation error: %s",
-        exc.errors(),
+        errors,
         extra={"trace_id": trace_id},
     )
 
     # Преобразуем ошибки Pydantic в наш формат
     invalid_params = []
-    for error in exc.errors():
+    for error in errors:
         loc = ".".join(str(x) for x in error.get("loc", []))
         msg = error.get("msg", "Unknown error")
         invalid_params.append({loc: msg})
