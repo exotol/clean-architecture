@@ -8,3 +8,15 @@ class Healthcheck(BaseModel):
 
     Цель вернуть статус 200
     """
+
+
+class Liveness(BaseModel):
+    """Liveness probe response (process is running)."""
+
+    status: str = "ok"
+
+
+class Readiness(BaseModel):
+    """Readiness probe response (ready to accept traffic)."""
+
+    status: str = "ok"

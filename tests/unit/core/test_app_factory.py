@@ -7,8 +7,22 @@ from starlette.middleware import Middleware
 
 from app.core.app_factory import create_app
 from app.core.app_factory import create_middleware_list
+from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.utils.configs import ProfilingConfig
+from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
+
+
+def _rate_limit_config(
+    *,
+    enabled: bool = False,
+) -> RateLimitConfig:
+    return RateLimitConfig(
+        enabled=enabled,
+        requests_per_window=100,
+        window_seconds=60.0,
+        key_header=None,
+    )
 
 
 def test_create_middleware_list() -> None:
@@ -21,9 +35,16 @@ def test_create_middleware_list() -> None:
         cors_allow_headers=["*"],
     )
     profiling_config = ProfilingConfig(enabled=True)
+    rate_limit_config = _rate_limit_config(enabled=False)
+    rate_limit_store = RateLimitStore()
 
     # Act
-    middleware = create_middleware_list(security_config, profiling_config)
+    middleware = create_middleware_list(
+        security_config,
+        profiling_config,
+        rate_limit_config,
+        rate_limit_store,
+    )
 
     # Assert
     assert isinstance(middleware, list)
@@ -41,12 +62,44 @@ def test_create_middleware_list_no_profiling() -> None:
         cors_allow_headers=["*"],
     )
     profiling_config = ProfilingConfig(enabled=False)
+    rate_limit_config = _rate_limit_config(enabled=False)
+    rate_limit_store = RateLimitStore()
 
     # Act
-    middleware = create_middleware_list(security_config, profiling_config)
+    middleware = create_middleware_list(
+        security_config,
+        profiling_config,
+        rate_limit_config,
+        rate_limit_store,
+    )
 
     # Assert
     assert len(middleware) == 3
+
+
+def test_create_middleware_list_with_rate_limit() -> None:
+    # Arrange
+    security_config = SecurityConfig(
+        trusted_hosts=["*"],
+        cors_origins=["*"],
+        cors_allow_credentials=True,
+        cors_allow_methods=["*"],
+        cors_allow_headers=["*"],
+    )
+    profiling_config = ProfilingConfig(enabled=False)
+    rate_limit_config = _rate_limit_config(enabled=True)
+    rate_limit_store = RateLimitStore()
+
+    # Act
+    middleware = create_middleware_list(
+        security_config,
+        profiling_config,
+        rate_limit_config,
+        rate_limit_store,
+    )
+
+    # Assert
+    assert len(middleware) == 4  # + RateLimit
 
 
 def test_create_app() -> None:
