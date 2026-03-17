@@ -10,9 +10,10 @@ from fastapi import status
 from fastapi.exceptions import RequestValidationError
 import pytest
 
+from app.core.constants import TRACE_ID
 from app.core.exceptions import BusinessError
 from app.core.exceptions import Reasons
-from app.presentation.api import exception_handlers
+from app.presentation import exception_handlers
 from tests.schemas.unit.presentation.exception_handlers import (
     ExceptionHandlerEntity,
 )
@@ -118,8 +119,6 @@ def test_exception_handlers(
 
     # Configure state to return a string for trace_id
     # TRACE_ID is "X-Request-ID", so we must use setattr because it has hyphens
-    from app.core.constants import TRACE_ID
-
     mock_request.state = MagicMock()
     setattr(mock_request.state, TRACE_ID, "test-trace-id")
 
@@ -128,7 +127,7 @@ def test_exception_handlers(
     handler_func = getattr(exception_handlers, entity.handler_name)
 
     with patch(
-        "app.presentation.api.exception_handlers.logger",
+        "app.presentation.exception_handlers.logger",
     ) as mock_logger:
         # Act
         response = handler_func(mock_request, entity.exception)

@@ -14,7 +14,6 @@ from app.utils.serializer import ItemSerializer
 def setup_di_container() -> None:
     """Initialize DI container for unit tests."""
     container = AppContainer()
-    # container.infra_container().config.from_dict(load_settings().as_dict())
     container.infra_container().config.from_dict({})
 
     # Mock observability strategies to prevent external connections/hangs

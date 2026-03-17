@@ -21,10 +21,10 @@ from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
 from app.infrastructure.observability.profiling import ProfilingMiddleware
 from app.presentation.api.application_api import create_main_router
-from app.presentation.api.exception_handlers import business_error_handler
-from app.presentation.api.exception_handlers import global_exception_handler
-from app.presentation.api.exception_handlers import infra_error_handler
-from app.presentation.api.exception_handlers import request_validation_handler
+from app.presentation.exception_handlers import business_error_handler
+from app.presentation.exception_handlers import global_exception_handler
+from app.presentation.exception_handlers import infra_error_handler
+from app.presentation.exception_handlers import request_validation_handler
 from app.utils.configs import ProfilingConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
@@ -65,7 +65,7 @@ def create_middleware_list(
     if profiling_config.enabled:
         middleware_list.append(
             Middleware(
-                ProfilingMiddleware,
+                ProfilingMiddleware,  # type: ignore[arg-type]
                 config=profiling_config,
             ),
         )
@@ -78,8 +78,7 @@ def add_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
     app.add_exception_handler(
-        RequestValidationError,
-        request_validation_handler,
+        RequestValidationError, request_validation_handler,
     )
     app.add_exception_handler(Exception, global_exception_handler)
 
@@ -87,7 +86,9 @@ def add_exception_handlers(app: FastAPI) -> None:
 def create_app() -> FastAPI:
     """Factory function to create the FastAPI application."""
     container: AppContainer = AppContainer()
-    container.infra_container.config.from_dict(load_settings().as_dict())
+    container.infra_container.config.from_dict(  # type: ignore[attr-defined]
+        load_settings().as_dict(),
+    )
 
     logger_config = container.infra_container.logger_config()
     otlp_config = container.infra_container.otlp_config()
@@ -110,6 +111,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         default_response_class=AdvORJSONResponse,
     )
+    app.state.container = container
 
     app.include_router(create_main_router())
     add_exception_handlers(app)

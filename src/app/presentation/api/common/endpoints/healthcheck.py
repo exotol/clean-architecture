@@ -20,4 +20,5 @@ router = APIRouter()
 )
 @monitor(Events.HEALTHCHECK)
 def healthcheck() -> Healthcheck:
+    """Healthcheck endpoint."""
     return Healthcheck()

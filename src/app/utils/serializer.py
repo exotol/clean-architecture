@@ -107,7 +107,8 @@ class ItemSerializer:
         attr = getattr(obj, "isoformat", None)
         if callable(attr):
             try:
-                return attr()
+                value = attr()
+                return value if isinstance(value, str) else str(value)
             except Exception as exc:
                 logger.debug("isoformat() failed: %s", exc.__class__.__name__)
                 return None
@@ -118,7 +119,8 @@ class ItemSerializer:
         attr = getattr(obj, "hex", None)
         if callable(attr):
             try:
-                return attr()
+                value = attr()
+                return value if isinstance(value, str) else str(value)
             except Exception as exc:
                 logger.debug("hex() failed: %s", exc.__class__.__name__)
                 return None

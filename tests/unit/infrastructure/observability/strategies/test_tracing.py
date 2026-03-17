@@ -8,11 +8,8 @@ import pytest
 from app.infrastructure.observability.strategies.tracing import (
     OpentelemetryTracingStrategy,
 )
-from tests.schemas.unit.infrastructure.observability.strategies.tracing import (
-    StartSpanEntity,
-)
-from tests.schemas.unit.infrastructure.observability.strategies.tracing import (
-    StartSpanExpected,
+from tests.schemas.unit.infrastructure.observability.strategies import (
+    tracing as schemas,
 )
 
 
@@ -28,8 +25,8 @@ def mock_trace():
     ("entity", "expected"),
     [
         pytest.param(
-            StartSpanEntity(name="TEST_SPAN"),
-            StartSpanExpected(
+            schemas.StartSpanEntity(name="TEST_SPAN"),
+            schemas.StartSpanExpected(
                 tracer_called_with="app.infrastructure.observability.strategies.tracing",
                 kind_attr="INTERNAL",
             ),
@@ -39,8 +36,8 @@ def mock_trace():
 )
 def test_start_span(
     mock_trace: MagicMock,
-    entity: StartSpanEntity,
-    expected: StartSpanExpected,
+    entity: schemas.StartSpanEntity,
+    expected: schemas.StartSpanExpected,
 ):
     strategy = OpentelemetryTracingStrategy()
 
@@ -80,13 +77,15 @@ def test_start_span(
         f"expected={entity.name}, actual={span_call_args[0][0]}"
     )
 
-    assert span_call_args[1]["kind"] == mock_trace.SpanKind.INTERNAL, (
+    actual_kind = span_call_args[1]["kind"]
+    expected_kind = mock_trace.SpanKind.INTERNAL
+    assert actual_kind == expected_kind, (
         f"Expected span kind to be INTERNAL. "
-        f"expected={mock_trace.SpanKind.INTERNAL}, actual={span_call_args[1]['kind']}"
+        f"expected={expected_kind}, actual={actual_kind}"
     )
 
 
-def test_end_span(mock_trace: MagicMock):
+def test_end_span() -> None:
     # This test is simple enough to not need parametrization for now,
     # as it's a no-op/pass-through.
     strategy = OpentelemetryTracingStrategy()

@@ -125,7 +125,6 @@ def test_monitor_sync_error_infrastructure(
 
 
 def test_monitor_sync_suppress_exception(
-    mock_logging_strategy,
 ) -> None:
     # Arrange
     @monitor(event_name="suppress", reraise=False)
@@ -188,7 +187,7 @@ async def test_monitor_async_error(
         raise ValueError("async boom")
 
     # Act
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="async boom"):
         await async_fail()
 
     # Assert

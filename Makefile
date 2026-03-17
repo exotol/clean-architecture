@@ -101,7 +101,7 @@ ruff.format:
 
 mypy.check:
 	@echo "Запустить проверку MYPY типизации"
-	uv run mypy --install-types --non-interactive .
+	uv run mypy
 
 fmt:
 	@echo "Форматирование (ruff format)"

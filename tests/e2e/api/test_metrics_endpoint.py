@@ -62,7 +62,8 @@ async def test_metrics_endpoint(
         f"but expected status was = {expected.status_code}"
     )
     assert response.headers["content-type"] == expected.content_type, (
-        f"Test failed, actual content-type = {response.headers.get('content-type')}, "
+        f"Test failed, actual content-type = "
+        f"{response.headers.get('content-type')}, "
         f"but expected content-type was = {expected.content_type}"
     )
 

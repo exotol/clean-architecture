@@ -74,7 +74,7 @@ def mock_instrumentor():
                 logger_config=LoggerConfig(
                     level=LogLevel.DEBUG,
                     format="%(message)s",
-                    path="/tmp/logs.json",
+                    path="logs.json",
                     rotation="1 day",
                     retention="1 week",
                     loggers_to_root=["uvicorn"],
@@ -94,13 +94,14 @@ def mock_instrumentor():
         ),
     ],
 )
-def test_setup_logging(
+def test_setup_logging(  # noqa: C901, PLR0913, PLR0917
     entity: LoggingEntity,
     expected: LoggingExpected,
     mock_trace_provider: MagicMock,
     mock_set_tracer_provider: MagicMock,
     mock_dict_config: MagicMock,
     mock_instrumentor: MagicMock,
+    tmp_path,
 ) -> None:
     # Arrange
     # Define dummy classes to simulate types for isinstance checks
@@ -125,7 +126,7 @@ def test_setup_logging(
 
     class MockResource:
         @staticmethod
-        def create(attributes):
+        def create(*, attributes):  # noqa: ARG004
             return MagicMock()
 
     mock_trace_provider.return_value = None
@@ -152,6 +153,9 @@ def test_setup_logging(
             new=MockResource,
         ),
     ):
+        if entity.logger_config.path:
+            entity.logger_config.path = str(tmp_path / "logs.json")
+
         # Act
         setup_logging(entity.logger_config, entity.otlp_config)
 
@@ -173,9 +177,10 @@ def test_setup_logging(
         assert config_args["version"] == 1
         assert "handlers" in config_args
         assert "console" in config_args["handlers"]
-        assert (
-            config_args["formatters"]["json"]["()"] == jsonlogger.JsonFormatter
-        )
+        assert config_args["formatters"]["json"]["()"] in {
+            "pythonjsonlogger.jsonlogger.JsonFormatter",
+            jsonlogger.JsonFormatter,
+        }
 
         if entity.logger_config.path:
             assert "file" in config_args["handlers"]

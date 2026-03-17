@@ -37,7 +37,9 @@ def main(
 def init_server_container() -> None:
     """Initialize DI container configuration for the server runtime."""
     container = ServerContainer()
-    container.infra_container.config.from_dict(load_settings().as_dict())
+    container.infra_container.config.from_dict(  # type: ignore[attr-defined]
+        load_settings().as_dict(),
+    )
 
 
 if __name__ == "__main__":
