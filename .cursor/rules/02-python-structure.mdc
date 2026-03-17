@@ -14,5 +14,6 @@ alwaysApply: false
 - **Типы и аннотации:** везде для публичных функций/методов; в начале модуля `from __future__ import annotations` при необходимости. Запрещено подавление: никаких `# noqa`, `# type: ignore` в коде; не добавлять игноры в `pyproject.toml` — проблемы решать, не подавлять.
 - **Константы:** только в `app.core.constants`; конфиг — через Dynaconf и `app.utils.configs`, не `os.getenv` по коду. Доступ к настройкам **только** `settings.SECTION.KEY`; запрещены `settings.get(...)` и `getattr(settings...)` (AGENTS.md §7; `make check.settings`).
 - **Тесты:** данные через Pydantic-схемы в `tests/schemas/`, parametrize с `id`; unit — без реальных внешних сервисов, моки для репозиториев/сервисов.
+- **Вложенные функции:** запрещены, кроме декораторов; где возможно — только функции/методы уровня модуля или класса (AGENTS.md §6).
 
 См. **docs/structure.md**, **docs/architecture.md**, **AGENTS.md**.
