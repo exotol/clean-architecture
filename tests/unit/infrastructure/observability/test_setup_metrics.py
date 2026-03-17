@@ -7,8 +7,13 @@ from app.utils.configs import MetricsConfig
 
 
 def test_setup_metrics() -> None:
-    config = MetricsConfig(duration_buckets=[0.1, 0.2], service_name="test")
+    # Arrange
+    config = MetricsConfig(
+        duration_buckets=[0.1, 0.2],
+        service_name="test",
+    )
 
+    # Act
     with (
         patch(
             "app.infrastructure.observability.metrics.metrics",
@@ -22,9 +27,18 @@ def test_setup_metrics() -> None:
         patch("app.infrastructure.observability.metrics.View") as mock_view,
         patch("app.infrastructure.observability.metrics.Resource"),
     ):
-        setup_metrics.__wrapped__(config)
+        setup_metrics(metrics_config=config)
 
-        mock_reader.assert_called_once()
-        mock_view.assert_called_once()
-        mock_provider.assert_called_once()
+        # Assert
+        assert mock_reader.call_count == 1, (
+            f"Expected PrometheusMetricReader() called once, "
+            f"got {mock_reader.call_count}"
+        )
+        assert mock_view.call_count == 1, (
+            f"Expected View() called once, got {mock_view.call_count}"
+        )
+        assert mock_provider.call_count == 1, (
+            f"Expected MeterProvider() called once, "
+            f"got {mock_provider.call_count}"
+        )
         mock_metrics.set_meter_provider.assert_called_once()

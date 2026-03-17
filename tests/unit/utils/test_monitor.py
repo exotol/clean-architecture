@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from app.core.containers import AppContainer
 
 
-# --- Fixtures: strategies from DI container overrides (conftest) ---
 @pytest.fixture(autouse=True)
 def rewire_mock_container(di_container: AppContainer) -> None:
     """Re-wire app package to test container (undo create_app wiring)."""
@@ -48,30 +47,36 @@ def test_monitor_sync_success(
 ) -> None:
     # Arrange
     @monitor(event_name="test_sync")
-    def sync_func(a, b):
+    def sync_func(a: int, b: int) -> int:
         return a + b
 
     # Act
     result = sync_func(1, 2)
 
     # Assert
-    assert result == 3
+    assert result == 3, f"Expected sync_func(1, 2) = 3, got {result}"
     logging_strategy = di_container.infra_container.logging_strategy()
     metrics_strategy = di_container.infra_container.metrics_strategy()
     mock_tracing_strategy.start_span.assert_called_once_with("test_sync")
     logging_strategy.log_start.assert_called_once()
     logging_strategy.log_success.assert_called_once()
-    metrics_strategy.record_request.assert_called_once()
-
+    assert metrics_strategy.record_request.call_count == 1, (
+        f"Expected record_request called once, "
+        f"got {metrics_strategy.record_request.call_count}"
+    )
     _args, kwargs = metrics_strategy.record_request.call_args
-    assert kwargs["status"] == "success"
-    assert kwargs["event_name"] == "test_sync"
+    assert kwargs["status"] == "success", (
+        f"Expected status='success', got {kwargs.get('status')!r}"
+    )
+    assert kwargs["event_name"] == "test_sync", (
+        f"Expected event_name='test_sync', got {kwargs.get('event_name')!r}"
+    )
 
 
 def test_monitor_sync_error(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name=Events.SEARCH_SERVICE, reraise=True)
-    def sync_fail():
+    def sync_fail() -> None:
         err = BusinessError("Fail message")
         err.title = "fail"
         err.code = "FAIL"
@@ -85,17 +90,23 @@ def test_monitor_sync_error(di_container: AppContainer) -> None:
     logging_strategy = di_container.infra_container.logging_strategy()
     metrics_strategy = di_container.infra_container.metrics_strategy()
     logging_strategy.log_error.assert_called_once()
-    metrics_strategy.record_request.assert_called_once()
-
+    assert metrics_strategy.record_request.call_count == 1, (
+        f"Expected record_request called once, "
+        f"got {metrics_strategy.record_request.call_count}"
+    )
     _args, kwargs = metrics_strategy.record_request.call_args
-    assert kwargs["status"] == "error"
-    assert kwargs["error_type"] == "business"
+    assert kwargs["status"] == "error", (
+        f"Expected status='error', got {kwargs.get('status')!r}"
+    )
+    assert kwargs["error_type"] == "business", (
+        f"Expected error_type='business', got {kwargs.get('error_type')!r}"
+    )
 
 
 def test_monitor_sync_error_infrastructure(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="infra_test")
-    def sync_fail():
+    def sync_fail() -> None:
         raise InfrastructureError("db fail")
 
     # Act
@@ -105,24 +116,27 @@ def test_monitor_sync_error_infrastructure(di_container: AppContainer) -> None:
     # Assert
     metrics_strategy = di_container.infra_container.metrics_strategy()
     _args, kwargs = metrics_strategy.record_request.call_args
-    assert kwargs["error_type"] == "infrastructure"
+    assert kwargs["error_type"] == "infrastructure", (
+        f"Expected error_type='infrastructure', "
+        f"got {kwargs.get('error_type')!r}"
+    )
 
 
 def test_monitor_sync_suppress_exception() -> None:
     # Arrange
     @monitor(event_name="suppress", reraise=False)
-    def sync_fail():
+    def sync_fail() -> None:
         raise ValueError("boom")
 
     # Act
     result = sync_fail()
 
     # Assert
-    assert result is None
+    assert result is None, f"Expected None when reraise=False, got {result!r}"
 
 
 def test_monitor_callback_error(di_container: AppContainer) -> None:
-    # Test that exception in callback is suppressed
+    # Arrange
     callback = MagicMock(side_effect=ValueError("Callback failed"))
 
     @monitor(
@@ -130,13 +144,16 @@ def test_monitor_callback_error(di_container: AppContainer) -> None:
         action_when_exception=callback,
         reraise=False,
     )
-    def func():
+    def func() -> None:
         raise RuntimeError("Original error")
 
-    # Should not raise
+    # Act
     func()
 
-    callback.assert_called_once()  # Should return None if suppressed
+    # Assert
+    assert callback.call_count == 1, (
+        f"Expected callback called once, got {callback.call_count}"
+    )
     logging_strategy = di_container.infra_container.logging_strategy()
     logging_strategy.log_error.assert_called_once()
 
@@ -146,24 +163,30 @@ def test_monitor_callback_error(di_container: AppContainer) -> None:
 async def test_monitor_async_success(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="async_test")
-    async def async_func(x):
+    async def async_func(x: int) -> int:
         return x * 2
 
     # Act
     result = await async_func(5)
 
     # Assert
-    assert result == 10
+    assert result == 10, f"Expected async_func(5) = 10, got {result}"
     metrics_strategy = di_container.infra_container.metrics_strategy()
-    metrics_strategy.record_request.assert_called_once()
-    assert metrics_strategy.record_request.call_args[1]["status"] == "success"
+    assert metrics_strategy.record_request.call_count == 1, (
+        f"Expected record_request called once, "
+        f"got {metrics_strategy.record_request.call_count}"
+    )
+    call_kw = metrics_strategy.record_request.call_args[1]
+    assert call_kw["status"] == "success", (
+        "Expected status='success' in record_request kwargs"
+    )
 
 
 @pytest.mark.asyncio
 async def test_monitor_async_error(di_container: AppContainer) -> None:
     # Arrange
     @monitor(event_name="async_error")
-    async def async_fail():
+    async def async_fail() -> None:
         raise ValueError("async boom")
 
     # Act
@@ -172,17 +195,24 @@ async def test_monitor_async_error(di_container: AppContainer) -> None:
 
     # Assert
     metrics_strategy = di_container.infra_container.metrics_strategy()
-    metrics_strategy.record_request.assert_called_once()
-    assert metrics_strategy.record_request.call_args[1]["status"] == "error"
+    assert metrics_strategy.record_request.call_count == 1, (
+        f"Expected record_request called once, "
+        f"got {metrics_strategy.record_request.call_count}"
+    )
+    assert metrics_strategy.record_request.call_args[1]["status"] == "error", (
+        "Expected status='error' in record_request kwargs"
+    )
 
 
 @pytest.mark.asyncio
 async def test_monitor_async_suppress_returns_none() -> None:
-    """Async monitor with reraise=False returns None on exception."""
-
+    # Arrange
     @monitor(event_name="async_suppress", reraise=False)
-    async def async_fail():
+    async def async_fail() -> None:
         raise RuntimeError("suppressed")
 
+    # Act
     result = await async_fail()
-    assert result is None
+
+    # Assert
+    assert result is None, f"Expected None when reraise=False, got {result!r}"

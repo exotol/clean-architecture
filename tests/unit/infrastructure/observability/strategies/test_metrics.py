@@ -23,26 +23,41 @@ def mock_metrics() -> MagicMock:
 
 
 def test_init(mock_metrics: MagicMock) -> None:
+    # Arrange
+
+    # Act
     OpentelemetryMetricsStrategy()
 
-    assert mock_metrics.get_meter.called
-
+    # Assert
+    assert mock_metrics.get_meter.called, (
+        "Expected metrics.get_meter to be called on init"
+    )
     call_args = mock_metrics.get_meter.call_args[0]
     expected_meter_name = "app.infrastructure.observability.strategies.metrics"
-    assert call_args[0] == expected_meter_name
+    assert call_args[0] == expected_meter_name, (
+        f"Expected get_meter({expected_meter_name!r}), got {call_args[0]!r}"
+    )
 
     meter = mock_metrics.get_meter.return_value
-
-    assert meter.create_counter.called
-    # First create_counter is requests_total
+    assert meter.create_counter.called, (
+        "Expected meter.create_counter to be called"
+    )
     first_counter_kw = meter.create_counter.call_args_list[0][1]
-    assert first_counter_kw["name"] == constants.METRICS_REQUESTS_TOTAL_NAME
+    assert first_counter_kw["name"] == constants.METRICS_REQUESTS_TOTAL_NAME, (
+        f"Expected counter name {constants.METRICS_REQUESTS_TOTAL_NAME!r}, "
+        f"got {first_counter_kw['name']!r}"
+    )
 
-    assert meter.create_histogram.called
-    # First create_histogram is request_duration
+    assert meter.create_histogram.called, (
+        "Expected meter.create_histogram to be called"
+    )
     first_histogram_kw = meter.create_histogram.call_args_list[0][1]
     assert (
         first_histogram_kw["name"] == constants.METRICS_REQUEST_DURATION_NAME
+    ), (
+        f"Expected histogram name "
+        f"{constants.METRICS_REQUEST_DURATION_NAME!r}, "
+        f"got {first_histogram_kw['name']!r}"
     )
 
 
@@ -89,13 +104,12 @@ def test_record_request(
     entity: schemas.RecordRequestEntity,
     expected: schemas.RecordRequestExpected,
 ) -> None:
+    # Arrange
     strategy = OpentelemetryMetricsStrategy()
-
-    # Mock instruments
     strategy.requests_total = MagicMock()
     strategy.request_duration = MagicMock()
 
-    # Test record_request
+    # Act
     strategy.record_request(
         event_name=entity.event_name,
         duration=entity.duration,
@@ -103,42 +117,69 @@ def test_record_request(
         error_type=entity.error_type,
     )
 
-    # Verify counter add
-    assert strategy.requests_total.add.called
-
+    # Assert
+    assert strategy.requests_total.add.called, (
+        "Expected requests_total.add to be called"
+    )
     counter_args = strategy.requests_total.add.call_args
-    assert counter_args[0][0] == expected.counter_add_value
+    assert counter_args[0][0] == expected.counter_add_value, (
+        f"Expected counter add value {expected.counter_add_value}, "
+        f"got {counter_args[0][0]}"
+    )
+    assert counter_args[0][1] == expected.counter_attrs, (
+        f"Expected counter attrs {expected.counter_attrs}, "
+        f"got {counter_args[0][1]}"
+    )
 
-    assert counter_args[0][1] == expected.counter_attrs
-
-    # Verify histogram record
-    assert strategy.request_duration.record.called
-
+    assert strategy.request_duration.record.called, (
+        "Expected request_duration.record to be called"
+    )
     histogram_args = strategy.request_duration.record.call_args
-    assert histogram_args[0][0] == expected.histogram_record_value
-
-    assert histogram_args[0][1] == expected.histogram_attrs
+    assert histogram_args[0][0] == expected.histogram_record_value, (
+        f"Expected histogram value {expected.histogram_record_value}, "
+        f"got {histogram_args[0][0]}"
+    )
+    assert histogram_args[0][1] == expected.histogram_attrs, (
+        f"Expected histogram attrs {expected.histogram_attrs}, "
+        f"got {histogram_args[0][1]}"
+    )
 
 
 def test_record_sla() -> None:
-    """record_sla calls sla_requests_total and sla_latency."""
+    # Arrange
     strategy = OpentelemetryMetricsStrategy()
     strategy.sla_requests_total = MagicMock()
     strategy.sla_latency = MagicMock()
 
+    # Act
     strategy.record_sla(
         event_name="test_sla",
         duration=0.5,
         success=True,
     )
 
-    strategy.sla_requests_total.add.assert_called_once_with(
+    # Assert
+    assert strategy.sla_requests_total.add.call_count == 1, (
+        f"Expected sla_requests_total.add called once, "
+        f"got {strategy.sla_requests_total.add.call_count}"
+    )
+    assert strategy.sla_requests_total.add.call_args[0] == (
         1,
         {"event": "test_sla", "status": "success"},
+    ), (
+        f"Expected add(1, {{'event': 'test_sla', 'status': 'success'}}), "
+        f"got {strategy.sla_requests_total.add.call_args}"
     )
-    strategy.sla_latency.record.assert_called_once_with(
+    assert strategy.sla_latency.record.call_count == 1, (
+        f"Expected sla_latency.record called once, "
+        f"got {strategy.sla_latency.record.call_count}"
+    )
+    assert strategy.sla_latency.record.call_args[0] == (
         0.5,
         {"event": "test_sla"},
+    ), (
+        f"Expected record(0.5, {{'event': 'test_sla'}}), "
+        f"got {strategy.sla_latency.record.call_args}"
     )
 
     strategy.sla_requests_total.reset_mock()
@@ -148,7 +189,14 @@ def test_record_sla() -> None:
         duration=0.1,
         success=False,
     )
-    strategy.sla_requests_total.add.assert_called_once_with(
+    assert strategy.sla_requests_total.add.call_count == 1, (
+        f"Expected sla_requests_total.add called once (fail path), "
+        f"got {strategy.sla_requests_total.add.call_count}"
+    )
+    assert strategy.sla_requests_total.add.call_args[0] == (
         1,
         {"event": "test_sla_fail", "status": "error"},
+    ), (
+        f"Expected add(1, {{'event': 'test_sla_fail', 'status': 'error'}}), "
+        f"got {strategy.sla_requests_total.add.call_args}"
     )
