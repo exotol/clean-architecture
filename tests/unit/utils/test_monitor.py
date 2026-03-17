@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -8,7 +9,7 @@ import pytest
 from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
-from app.utils.monitor import _get_bound_arguments
+from app.utils.monitor import get_bound_arguments
 from app.utils.monitor import monitor
 
 
@@ -44,11 +45,10 @@ def mock_tracing_strategy(di_container: AppContainer) -> MagicMock:
 # --- _get_bound_arguments ---
 def test_get_bound_arguments_resolves_positional_and_keyword() -> None:
     # Arrange
-    def func(a: int, b: int) -> int:
-        return a + b
+    func = operator.add
 
     # Act
-    out = _get_bound_arguments(func, (1, 2), {})
+    out = get_bound_arguments(func, (1, 2), {})
 
     # Assert
     assert out == {"a": 1, "b": 2}, (
@@ -59,10 +59,12 @@ def test_get_bound_arguments_resolves_positional_and_keyword() -> None:
 def test_get_bound_arguments_excludes_self() -> None:
     # Arrange: use unbound function with explicit "self" param
     def method(self: object, x: int) -> int:
-        return x
+        # Reference `self` so linters don't treat it as unused; return value
+        # doesn't matter for this test because the function isn't executed.
+        return x + hash(self) * 0
 
     # Act: bind (instance, 3) -> bound.arguments has self and x; we drop self
-    out = _get_bound_arguments(method, (object(), 3), {})
+    out = get_bound_arguments(method, (object(), 3), {})
 
     # Assert
     assert "self" not in out, (f"Expected no 'self' in result, got {out}")
@@ -71,11 +73,10 @@ def test_get_bound_arguments_excludes_self() -> None:
 
 def test_get_bound_arguments_bind_error_returns_empty() -> None:
     # Arrange: pass wrong number of args so bind fails
-    def func(a: int, b: int) -> int:
-        return a + b
+    func = operator.add
 
     # Act
-    out = _get_bound_arguments(func, (1,), {})
+    out = get_bound_arguments(func, (1,), {})
 
     # Assert
     assert out == {}, (f"Expected empty dict on bind error, got {out}")

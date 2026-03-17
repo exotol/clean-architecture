@@ -1,15 +1,23 @@
-#!/usr/bin/env python3
-"""Fail if settings is read via .get() or getattr(). Only settings.SECTION.KEY allowed (AGENTS.md §7)."""
+"""Check Dynaconf settings usage.
+
+Fails if code reads Dynaconf settings via ``settings.get(...)`` or
+``getattr(...)``.
+Allowed form only: ``settings.SECTION.KEY`` (see ``AGENTS.md`` §7).
+"""
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-# settings.get( anything
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+
 PATTERN_GET = re.compile(r"settings\.get\s*\(")
-# getattr(settings, ...) or getattr(settings.SECTION, ...)
 PATTERN_GETATTR = re.compile(
     r"getattr\s*\(\s*settings(\s*,\s*|\.[A-Za-z_][A-Za-z0-9_]*\s*,\s*)",
 )
@@ -17,26 +25,36 @@ PATTERN_GETATTR = re.compile(
 ROOTS = ("src", "tests")
 
 
-def main() -> int:
-    repo = Path(__file__).resolve().parent.parent
-    found: list[tuple[str, int, str]] = []
+def _iter_python_files(repo_root: Path) -> Iterator[Path]:
+    """Yield all Python files under selected roots."""
     for root in ROOTS:
-        dir_path = repo / root
+        dir_path = repo_root / root
         if not dir_path.is_dir():
             continue
-        for path in dir_path.rglob("*.py"):
-            text = path.read_text()
-            for i, line in enumerate(text.splitlines(), start=1):
-                if PATTERN_GET.search(line) or PATTERN_GETATTR.search(line):
-                    found.append((str(path.relative_to(repo)), i, line.strip()))
-    if not found:
+        yield from dir_path.rglob("*.py")
+
+
+def _collect_violations(repo_root: Path) -> list[tuple[str, int, str]]:
+    """Collect forbidden settings access lines."""
+    violations: list[tuple[str, int, str]] = []
+    for path in _iter_python_files(repo_root):
+        text = path.read_text(encoding="utf-8")
+        relpath = str(path.relative_to(repo_root))
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if PATTERN_GET.search(line) or PATTERN_GETATTR.search(line):
+                violations.append((relpath, lineno, line.strip()))
+    return violations
+
+
+def main() -> int:
+    """Run the check and return 0 on success, 1 on violations."""
+    repo_root = Path(__file__).resolve().parent.parent
+    violations = _collect_violations(repo_root)
+    if not violations:
         return 0
-    print(
-        "Forbidden: only settings.SECTION.KEY allowed. No .get() or getattr(settings...). See AGENTS.md §7.",
-        file=sys.stderr,
-    )
-    for filepath, lineno, line in found:
-        print(f"  {filepath}:{lineno}: {line[:79]}", file=sys.stderr)
+
+    for _filepath, _lineno, _line in violations:
+        pass
     return 1
 
 

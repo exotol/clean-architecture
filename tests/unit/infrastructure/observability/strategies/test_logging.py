@@ -117,16 +117,20 @@ def test_log_start(
         f"expected args_in_bind={expected.args_in_bind}, got 'args' in context"
     )
     assert ("kwargs" in context) == expected.kwargs_in_bind, (
-        f"context must have 'kwargs' when use_log_args=True and no named_args, "
-        f"expected kwargs_in_bind={expected.kwargs_in_bind}"
+        f"context must have 'kwargs' when use_log_args=True "
+        f"and no named_args, expected kwargs_in_bind="
+        f"{expected.kwargs_in_bind}"
     )
     if expected.named_keys:
         for key in expected.named_keys:
             assert key in context, (
                 f"context must have named key {key!r}, got {list(context)}"
             )
-        assert "args" not in context and "kwargs" not in context, (
-            "when named_args is used, context must not have args/kwargs"
+        assert "args" not in context, (
+            "when named_args is used, context must not have key 'args'"
+        )
+        assert "kwargs" not in context, (
+            "when named_args is used, context must not have key 'kwargs'"
         )
 
     # Assert: structlog logger called with event message and log_kw
