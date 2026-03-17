@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from functools import partial
+import inspect
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
@@ -128,14 +129,17 @@ async def app_lifespan(
     _ensure_observability()
     infra = container.infra_container()
     init_result = infra.init_resources()
-    if init_result is not None:
+    if init_result is not None and inspect.isawaitable(init_result):
         await init_result
     try:
         await anyio.lowlevel.checkpoint()
         yield
     finally:
         shutdown_result = infra.shutdown_resources()
-        if shutdown_result is not None:
+        if (
+            shutdown_result is not None
+            and inspect.isawaitable(shutdown_result)
+        ):
             await shutdown_result
         container.unwire()
 
