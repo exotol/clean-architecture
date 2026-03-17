@@ -25,3 +25,15 @@ METRICS_REQUEST_DURATION_UNIT = "s"
 
 # Tracing
 OTLP_LOCAL_ENDPOINT = "console"
+
+# Rate limit (RFC 7807 reason)
+RATE_LIMIT_EXCEEDED_CODE = "RATE_LIMIT_EXCEEDED"
+RATE_LIMIT_EXCEEDED_URN = "urn:error:rate-limit-exceeded"
+
+# SLA metric names (OpenTelemetry)
+METRICS_SLA_REQUESTS_TOTAL_NAME = "app_sla_requests_total"
+METRICS_SLA_REQUESTS_TOTAL_DESC = "SLA request count by status (success/error)"
+METRICS_SLA_REQUESTS_TOTAL_UNIT = "1"
+METRICS_SLA_LATENCY_NAME = "app_sla_latency_seconds"
+METRICS_SLA_LATENCY_DESC = "SLA request latency in seconds"
+METRICS_SLA_LATENCY_UNIT = "s"
