@@ -6,6 +6,7 @@
 - **LEAN**: smallest possible change that solves the task; avoid “bonus refactors”.
 - **No mutable globals**: state through DI (`app.core.containers`, FastAPI `Depends()`), constants only in `app.core.constants`.
 - **No suppression of checks**: `# noqa` and `# type: ignore` are **forbidden** in code; fix the code instead. Do not add new ignore rules in `pyproject.toml`; every issue must be **solved**, not suppressed.
+- **Settings (Dynaconf) — strict**: only `settings.SECTION.KEY` is allowed. Forbidden: `settings.get(...)`, `getattr(settings.SECTION, "KEY", default)` and any other form. Enforced by `make check.settings`; see AGENTS.md §7.
 
 ## Local setup
 
