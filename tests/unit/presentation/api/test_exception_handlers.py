@@ -133,16 +133,33 @@ def test_exception_handlers(
         response = handler_func(mock_request, entity.exception)
 
         # Assert
-        assert response.status_code == expected.status_code
+        assert response.status_code == expected.status_code, (
+            f"Test failed, actual status_code = {response.status_code}, "
+            f"expected = {expected.status_code}"
+        )
 
         content = json.loads(response.body)
-        # Check type (aliased to 'type') or urn_type_error
         type_field = content.get("type", content.get("urn_type_error"))
-        assert type_field == expected.content_type_error
-        assert content["title"] == expected.content_title
-        assert content["reason"] == expected.content_reason
+        assert type_field == expected.content_type_error, (
+            f"Test failed, actual type = {type_field!r}, "
+            f"expected = {expected.content_type_error!r}"
+        )
+        assert content["title"] == expected.content_title, (
+            f"Test failed, actual title = {content['title']!r}, "
+            f"expected = {expected.content_title!r}"
+        )
+        assert content["reason"] == expected.content_reason, (
+            f"Test failed, actual reason = {content['reason']!r}, "
+            f"expected = {expected.content_reason!r}"
+        )
 
         if expected.log_level == "WARNING":
-            mock_logger.warning.assert_called_once()
+            assert mock_logger.warning.call_count == 1, (
+                f"Expected logger.warning called once, "
+                f"got {mock_logger.warning.call_count}"
+            )
         elif expected.log_level == "ERROR":
-            mock_logger.error.assert_called_once()
+            assert mock_logger.error.call_count == 1, (
+                f"Expected logger.error called once, "
+                f"got {mock_logger.error.call_count}"
+            )

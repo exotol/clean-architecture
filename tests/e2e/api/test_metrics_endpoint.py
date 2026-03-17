@@ -49,14 +49,16 @@ async def test_metrics_endpoint(
         entity: Test entity with paths.
         expected: Expected response data.
     """
-    # 1. Make a request to generate some metrics
+    # Arrange: trigger path to generate metrics
     trigger_response = await client.get(entity.trigger_path)
-    assert trigger_response.status_code == 200
+    assert trigger_response.status_code == 200, (
+        f"Trigger request failed, status = {trigger_response.status_code}"
+    )
 
-    # 2. Fetch metrics
+    # Act: fetch metrics
     response = await client.get(entity.path)
 
-    # 3. Assertions
+    # Assert
     assert response.status_code == expected.status_code, (
         f"Test failed, actual status = {response.status_code}, "
         f"but expected status was = {expected.status_code}"

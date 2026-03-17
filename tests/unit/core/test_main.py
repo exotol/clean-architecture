@@ -13,7 +13,7 @@ from app.utils.configs import OTLPConfig
 
 
 def test_init_server_container() -> None:
-    """init_server_container creates ServerContainer and loads config."""
+    # Arrange
     with (
         patch("app.main.ServerContainer") as mock_container_cls,
         patch("app.main.load_settings") as mock_load,
@@ -22,9 +22,14 @@ def test_init_server_container() -> None:
         mock_container.infra_container.config.from_dict = MagicMock()
         mock_load.return_value.as_dict.return_value = {}
 
+        # Act
         init_server_container()
 
-        mock_container_cls.assert_called_once()
+        # Assert
+        assert mock_container_cls.call_count == 1, (
+            f"Expected ServerContainer() called once, "
+            f"got {mock_container_cls.call_count}"
+        )
         mock_load.return_value.as_dict.assert_called_once()
         mock_container.infra_container.config.from_dict.assert_called_once_with(
             {},
@@ -32,7 +37,7 @@ def test_init_server_container() -> None:
 
 
 def test_main_calls_setup_logging_and_serve() -> None:
-    """main() configures logging and starts granian server."""
+    # Arrange
     mock_server = MagicMock()
     logger_config = LoggerConfig(
         level=LogLevel.INFO,
@@ -48,14 +53,25 @@ def test_main_calls_setup_logging_and_serve() -> None:
         service_name="test",
         insecure=True,
     )
+
+    # Act
     with patch("app.main.setup_logging") as mock_setup_logging:
         main(
             granian_server=mock_server,
             logger_config=logger_config,
             otlp_config=otlp_config,
         )
+
+        # Assert
+        assert mock_setup_logging.call_count == 1, (
+            f"Expected setup_logging called once, "
+            f"got {mock_setup_logging.call_count}"
+        )
         mock_setup_logging.assert_called_once_with(
             logger_config=logger_config,
             otlp_config=otlp_config,
         )
-        mock_server.serve.assert_called_once()
+        assert mock_server.serve.call_count == 1, (
+            f"Expected server.serve() called once, "
+            f"got {mock_server.serve.call_count}"
+        )

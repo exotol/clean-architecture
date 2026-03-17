@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import pytest
 from starlette.middleware import Middleware
 
 from app.core.app_factory import create_app
@@ -11,6 +12,8 @@ from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.utils.configs import ProfilingConfig
 from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
+from tests.schemas.unit.core.app_factory import MiddlewareListEntity
+from tests.schemas.unit.core.app_factory import MiddlewareListExpected
 
 
 def _rate_limit_config(
@@ -25,69 +28,54 @@ def _rate_limit_config(
     )
 
 
-def test_create_middleware_list() -> None:
-    # Arrange
-    security_config = SecurityConfig(
-        trusted_hosts=["example.com"],
-        cors_origins=["http://localhost"],
-        cors_allow_credentials=True,
-        cors_allow_methods=["GET"],
-        cors_allow_headers=["*"],
-    )
-    profiling_config = ProfilingConfig(enabled=True)
-    rate_limit_config = _rate_limit_config(enabled=False)
-    rate_limit_store = RateLimitStore()
-
-    # Act
-    middleware = create_middleware_list(
-        security_config,
-        profiling_config,
-        rate_limit_config,
-        rate_limit_store,
-    )
-
-    # Assert
-    assert isinstance(middleware, list)
-    assert len(middleware) == 4  # Correlation, TrustedHost, CORS, Profiling
-    assert isinstance(middleware[0], Middleware)
-
-
-def test_create_middleware_list_no_profiling() -> None:
-    # Arrange
-    security_config = SecurityConfig(
+def _security_config() -> SecurityConfig:
+    return SecurityConfig(
         trusted_hosts=["*"],
         cors_origins=["*"],
         cors_allow_credentials=True,
         cors_allow_methods=["*"],
         cors_allow_headers=["*"],
     )
-    profiling_config = ProfilingConfig(enabled=False)
-    rate_limit_config = _rate_limit_config(enabled=False)
-    rate_limit_store = RateLimitStore()
-
-    # Act
-    middleware = create_middleware_list(
-        security_config,
-        profiling_config,
-        rate_limit_config,
-        rate_limit_store,
-    )
-
-    # Assert
-    assert len(middleware) == 3
 
 
-def test_create_middleware_list_with_rate_limit() -> None:
+@pytest.mark.parametrize(
+    ("entity", "expected"),
+    [
+        pytest.param(
+            MiddlewareListEntity(
+                profiling_enabled=True,
+                rate_limit_enabled=False,
+            ),
+            MiddlewareListExpected(middleware_count=4),
+            id="profiling_on_rate_limit_off",
+        ),
+        pytest.param(
+            MiddlewareListEntity(
+                profiling_enabled=False,
+                rate_limit_enabled=False,
+            ),
+            MiddlewareListExpected(middleware_count=3),
+            id="profiling_off_rate_limit_off",
+        ),
+        pytest.param(
+            MiddlewareListEntity(
+                profiling_enabled=False,
+                rate_limit_enabled=True,
+            ),
+            MiddlewareListExpected(middleware_count=4),
+            id="profiling_off_rate_limit_on",
+        ),
+    ],
+)
+def test_create_middleware_list(
+    entity: MiddlewareListEntity,
+    expected: MiddlewareListExpected,
+) -> None:
+    """Middleware list length depends on profiling and rate_limit config."""
     # Arrange
-    security_config = SecurityConfig(
-        trusted_hosts=["*"],
-        cors_origins=["*"],
-        cors_allow_credentials=True,
-        cors_allow_methods=["*"],
-        cors_allow_headers=["*"],
-    )
-    profiling_config = ProfilingConfig(enabled=False)
-    rate_limit_config = _rate_limit_config(enabled=True)
+    security_config = _security_config()
+    profiling_config = ProfilingConfig(enabled=entity.profiling_enabled)
+    rate_limit_config = _rate_limit_config(enabled=entity.rate_limit_enabled)
     rate_limit_store = RateLimitStore()
 
     # Act
@@ -99,7 +87,16 @@ def test_create_middleware_list_with_rate_limit() -> None:
     )
 
     # Assert
-    assert len(middleware) == 4  # + RateLimit
+    assert isinstance(middleware, list), (
+        f"Expected middleware to be list, got {type(middleware)}"
+    )
+    assert len(middleware) == expected.middleware_count, (
+        f"Expected {expected.middleware_count} middlewares, "
+        f"got {len(middleware)}"
+    )
+    assert isinstance(middleware[0], Middleware), (
+        f"Expected first item to be Middleware, got {type(middleware[0])}"
+    )
 
 
 def test_create_app() -> None:
@@ -118,7 +115,6 @@ def test_create_app() -> None:
         mock_fastapi_cls.return_value = mock_app
 
         # Act
-        # Mock create_middleware_list to keep this test focused on wiring.
         with patch(
             "app.core.app_factory.create_middleware_list",
         ) as mock_create_middleware:
@@ -126,10 +122,21 @@ def test_create_app() -> None:
             app = create_app()
 
         # Assert
-        assert app is mock_app
-        mock_setup_logging.assert_called_once()
-        mock_setup_metrics.assert_called_once()
-        mock_app.include_router.assert_called_once()
-
-        # Verify container was stored in state
-        assert mock_app.state.container == mock_container
+        assert app is mock_app, (
+            "Expected create_app() to return FastAPI instance from mock"
+        )
+        assert mock_setup_logging.call_count == 1, (
+            f"Expected setup_logging called once, "
+            f"got {mock_setup_logging.call_count}"
+        )
+        assert mock_setup_metrics.call_count == 1, (
+            f"Expected setup_metrics called once, "
+            f"got {mock_setup_metrics.call_count}"
+        )
+        assert mock_app.include_router.call_count == 1, (
+            f"Expected include_router called once, "
+            f"got {mock_app.include_router.call_count}"
+        )
+        assert mock_app.state.container == mock_container, (
+            "Expected container to be stored in app.state"
+        )
