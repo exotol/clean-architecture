@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
@@ -7,6 +9,8 @@ from app.core.constants import NO_PARAMS
 
 
 class Reason(BaseModel):
+    """Reason metadata for Problem Details."""
+
     urn_type_error: str
     code: str
     message: str
@@ -14,6 +18,8 @@ class Reason(BaseModel):
 
 
 class Reasons:
+    """Common error reasons used across the service."""
+
     internal_server_error = Reason(
         urn_type_error="urn:error:internal-server-error",
         code="INTERNAL_SERVER_ERROR",
@@ -42,11 +48,13 @@ class Reasons:
         urn_type_error="urn:problem:validation-error",
         code="VALIDATION_ERROR",
         message="Request validation failed",
-        title="Validation Error"
+        title="Validation Error",
     )
 
 
 class ProblemDetail(BaseModel):
+    """RFC 7807-like error response model."""
+
     # В Pydantic v2 лучше использовать model_config вместо class Config
     model_config = ConfigDict(
         populate_by_name=True,
@@ -79,7 +87,8 @@ class ProblemDetail(BaseModel):
         ),
     )
     reason: str | None = Field(
-        ..., description="Короткий программный код ошибки"
+        ...,
+        description="Короткий программный код ошибки",
     )
     detail: str | None = Field(
         ...,
@@ -101,7 +110,8 @@ class ProblemDetail(BaseModel):
         ),
     )
     trace_id: str | None = Field(
-        ..., description="В каком логе искать детали? (контекст операции)"
+        ...,
+        description="В каком логе искать детали? (контекст операции)",
     )
     invalid_params: list[dict[str, str]] | None = Field(
         default=NO_PARAMS,
@@ -124,8 +134,7 @@ class BusinessError(AppError):
 
 # --- Инфраструктурные ошибки (система виновата) ---
 class InfrastructureError(AppError):
-    """
-    Инфраструктурные ошибки.
+    """Инфраструктурные ошибки.
 
     Cистема виновата: БД упала, S3 не отвечает.
 
@@ -134,4 +143,3 @@ class InfrastructureError(AppError):
 
 class InnerTechError(Exception):
     """Raised when serialization fails."""
-    pass

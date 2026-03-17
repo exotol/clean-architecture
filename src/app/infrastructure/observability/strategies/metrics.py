@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from opentelemetry import metrics
 
 from app.core import constants
@@ -27,6 +29,7 @@ class OpentelemetryMetricsStrategy(IMetricsStrategy):
         status: str,
         error_type: str | None = None,
     ) -> None:
+        """Record request metrics."""
         attributes = {"event": event_name, "status": status}
         if error_type:
             attributes["error_type"] = error_type

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from opentelemetry import trace
@@ -12,9 +14,11 @@ class OpentelemetryTracingStrategy(ITracingStrategy):
         self.tracer = trace.get_tracer(__name__)
 
     def start_span(self, name: str) -> Any:
-        return self.tracer.start_as_current_span(name, kind=trace.SpanKind.INTERNAL)
+        """Start a span for the given name."""
+        return self.tracer.start_as_current_span(
+            name, kind=trace.SpanKind.INTERNAL,
+        )
 
     def end_span(self, span: Any, exc: Exception | None = None) -> None:
-        # Context manager handles ending, but if we needed manual control:
-        # span.end()
-        pass
+        """End span (no-op for context-managed spans)."""
+        _ = (self.tracer, span, exc)

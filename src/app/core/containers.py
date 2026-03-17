@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 from dependency_injector import containers
 from dependency_injector import providers
 from granian import Granian
 from granian.constants import Interfaces
 
 from app.application.services.search_service import SearchService
-from app.infrastructure.observability.strategies.logging import StandardLoggingStrategy
-from app.infrastructure.observability.strategies.metrics import OpentelemetryMetricsStrategy
-from app.infrastructure.observability.strategies.tracing import OpentelemetryTracingStrategy
+from app.infrastructure.observability.strategies.logging import (
+    StandardLoggingStrategy,
+)
+from app.infrastructure.observability.strategies.metrics import (
+    OpentelemetryMetricsStrategy,
+)
+from app.infrastructure.observability.strategies.tracing import (
+    OpentelemetryTracingStrategy,
+)
 from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
@@ -21,6 +29,8 @@ from app.utils.serializer import ItemSerializer
 
 
 class InfrastructureContainer(containers.DeclarativeContainer):
+    """DI container for infrastructure-level providers."""
+
     config = providers.Configuration()
 
     server_config = providers.Singleton(
@@ -48,7 +58,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     metrics_config = providers.Singleton(
         MetricsConfig,
         duration_buckets=config.METRICS.DURATION.BUCKETS,
-        service_name=config.METRICS.SERVICE_NAME
+        service_name=config.METRICS.SERVICE_NAME,
     )
 
     security_config = providers.Singleton(
@@ -57,7 +67,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         cors_allow_credentials=config.SECURITY.CORS.ALLOW.CREDENTIALS,
         cors_allow_methods=config.SECURITY.CORS.ALLOW.METHODS,
         cors_allow_headers=config.SECURITY.CORS.ALLOW.HEADERS,
-        trusted_hosts=config.SECURITY.TRUSTED.HOSTS
+        trusted_hosts=config.SECURITY.TRUSTED.HOSTS,
     )
 
     otlp_config = providers.Singleton(
@@ -65,7 +75,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         enabled=config.TRACING.OTLP.ENABLED,
         endpoint=config.TRACING.OTLP.ENDPOINT,
         service_name=config.TRACING.OTLP.SERVICE_NAME,
-        insecure=config.TRACING.OTLP.INSECURE
+        insecure=config.TRACING.OTLP.INSECURE,
     )
 
     serialization_config = providers.Singleton(
@@ -100,8 +110,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
 
 
 class ServerContainer(containers.DeclarativeContainer):
+    """DI container for server runtime wiring."""
+
     wiring_config = containers.WiringConfiguration(
-        packages=["__main__", "app"]
+        packages=["__main__", "app"],
     )
     infra_container = providers.Container(InfrastructureContainer)
 
@@ -121,6 +133,8 @@ class ServerContainer(containers.DeclarativeContainer):
 
 
 class AppContainer(containers.DeclarativeContainer):
+    """DI container for application services and repositories."""
+
     wiring_config = containers.WiringConfiguration(packages=["app"])
     infra_container = providers.Container(InfrastructureContainer)
 

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import functools
 import inspect
+import logging
 from time import perf_counter
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import ParamSpec
-from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import cast
 
@@ -16,18 +17,21 @@ from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 
-if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Callable  # pragma: no cover
-    from collections.abc import Coroutine  # pragma: no cover
 
-    from app.domain.interfaces.observability import ILoggingStrategy  # pragma: no cover
-    from app.domain.interfaces.observability import IMetricsStrategy  # pragma: no cover
-    from app.domain.interfaces.observability import ITracingStrategy  # pragma: no cover
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Coroutine
+
+    from app.domain.interfaces.observability import ILoggingStrategy
+    from app.domain.interfaces.observability import IMetricsStrategy
+    from app.domain.interfaces.observability import ITracingStrategy
 
 
 # --- Typing ---
 P = ParamSpec("P")
 R = TypeVar("R")
+
+logger = logging.getLogger(__name__)
 
 
 # --- Strategy Getters (using @inject) ---
@@ -53,14 +57,13 @@ def _get_metrics_strategy(
 
 
 class _MonitoringHandler:
-    """
-    Helper class to handle logging and tracing logic for the monitor decorator.
+    """Handle logging/tracing/metrics for `monitor`.
+
     Delegates to injected strategies.
     """
 
     def __init__(
         self,
-        func: Callable[..., Any],
         event_name: Events | str,
         *,
         reraise: bool = True,
@@ -68,7 +71,6 @@ class _MonitoringHandler:
         use_log_args: bool = False,
         use_log_result: bool = False,
     ) -> None:
-        self.func = func
         if isinstance(event_name, Events):
             self.event_name = event_name.value.code
         else:
@@ -102,15 +104,25 @@ class _MonitoringHandler:
         return self._metrics_strategy
 
     def log_start(
-        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+        self,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
     ) -> tuple[float, Any]:
         """Logs start and returns (start_time, log_context)."""
         context = self.logging_strategy.log_start(
-            self.event_name, args, kwargs, use_log_args=self.use_log_args
+            self.event_name,
+            args,
+            kwargs,
+            use_log_args=self.use_log_args,
         )
         return perf_counter(), context
 
-    def log_success(self, result: Any, start_time: float, context: Any) -> None:
+    def log_success(
+        self,
+        result: Any,
+        start_time: float,
+        context: Any,
+    ) -> None:
         duration = perf_counter() - start_time
         self.metrics_strategy.record_request(
             event_name=self.event_name,
@@ -119,10 +131,18 @@ class _MonitoringHandler:
         )
 
         self.logging_strategy.log_success(
-            self.event_name, result, context, use_log_result=self.use_log_result
+            self.event_name,
+            result,
+            context,
+            use_log_result=self.use_log_result,
         )
 
-    def log_error(self, exc: Exception, start_time: float, context: Any) -> None:
+    def log_error(
+        self,
+        exc: Exception,
+        start_time: float,
+        context: Any,
+    ) -> None:
         duration = perf_counter() - start_time
         error_type = _classify_error(exc)
         self.metrics_strategy.record_request(
@@ -142,7 +162,7 @@ class _MonitoringHandler:
             if self.action_when_exception:
                 self.action_when_exception(exc)
         except Exception:
-            pass
+            logger.exception("monitor action_when_exception failed")
 
 
 def _classify_error(exc: Exception) -> str:
@@ -153,7 +173,7 @@ def _classify_error(exc: Exception) -> str:
     return "unknown"
 
 
-def _async_wrapper(
+def _async_wrapper[**P, R](
     func: Callable[P, Coroutine[Any, Any, R]],
     handler: _MonitoringHandler,
 ) -> Callable[P, Coroutine[Any, Any, R]]:
@@ -176,7 +196,7 @@ def _async_wrapper(
     return wrapper
 
 
-def _sync_wrapper(
+def _sync_wrapper[**P, R](
     func: Callable[P, R],
     handler: _MonitoringHandler,
 ) -> Callable[P, R]:
@@ -213,7 +233,6 @@ def monitor(
         func: Callable[P, R] | Callable[P, Coroutine[Any, Any, R]],
     ) -> Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]:
         handler = _MonitoringHandler(
-            func,
             event_name=event_name,
             reraise=reraise,
             action_when_exception=action_when_exception,
@@ -225,7 +244,8 @@ def monitor(
             return cast(
                 "Callable[P, Coroutine[Any, Any, R]]",
                 _async_wrapper(
-                    cast("Callable[P, Coroutine[Any, Any, R]]", func), handler
+                    cast("Callable[P, Coroutine[Any, Any, R]]", func),
+                    handler,
                 ),
             )
         return cast(
@@ -234,7 +254,9 @@ def monitor(
         )
 
     return cast(
-        "Callable[[Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]], Any]",
+        (
+            "Callable[[Callable[P, R] | Callable[P, Coroutine[Any, Any, R]]], "
+            "Any]"
+        ),
         decorator,
     )
-

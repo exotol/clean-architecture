@@ -1,4 +1,9 @@
-from dependency_injector.wiring import inject, Provide
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
 from opentelemetry import metrics
 from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from opentelemetry.sdk.metrics import MeterProvider
@@ -8,7 +13,10 @@ from opentelemetry.sdk.resources import Resource
 
 from app.core.constants import METRICS_REQUEST_DURATION_NAME
 from app.core.containers import AppContainer
-from app.utils.configs import MetricsConfig
+
+
+if TYPE_CHECKING:
+    from app.utils.configs import MetricsConfig
 
 
 @inject
@@ -17,9 +25,7 @@ def setup_metrics(
         AppContainer.infra_container.metrics_config
     ],
 ) -> None:
-    """
-    Configure OpenTelemetry metrics with Prometheus exporter.
-    """
+    """Configure OpenTelemetry metrics with Prometheus exporter."""
     # Create a reader to export metrics to Prometheus
     reader = PrometheusMetricReader()
 
@@ -28,7 +34,7 @@ def setup_metrics(
     view = View(
         instrument_name=METRICS_REQUEST_DURATION_NAME,
         aggregation=ExplicitBucketHistogramAggregation(
-            boundaries=duration_buckets
+            boundaries=duration_buckets,
         ),
     )
 
@@ -36,8 +42,8 @@ def setup_metrics(
     provider = MeterProvider(
         resource=Resource.create(
             {
-                "service.name": metrics_config.service_name
-            }
+                "service.name": metrics_config.service_name,
+            },
         ),
         metric_readers=[reader],
         views=[view],

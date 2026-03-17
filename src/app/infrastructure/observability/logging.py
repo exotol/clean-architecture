@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import logging.config
 from typing import TYPE_CHECKING
 
@@ -17,6 +16,7 @@ from pythonjsonlogger import jsonlogger
 
 from app.core.constants import OTLP_LOCAL_ENDPOINT
 
+
 if TYPE_CHECKING:
     from app.utils.configs import LoggerConfig
     from app.utils.configs import OTLPConfig
@@ -29,10 +29,10 @@ def setup_logging(
     # 0. Configure OpenTelemetry
     if not isinstance(trace.get_tracer_provider(), TracerProvider):
         resource = Resource.create(
-            attributes={"service.name": otlp_config.service_name}
+            attributes={"service.name": otlp_config.service_name},
         )
         provider = TracerProvider(resource=resource)
-    
+
         if otlp_config.enabled:
             if otlp_config.endpoint == OTLP_LOCAL_ENDPOINT:
                 processor = BatchSpanProcessor(ConsoleSpanExporter())
@@ -41,10 +41,10 @@ def setup_logging(
                     OTLPSpanExporter(
                         endpoint=otlp_config.endpoint,
                         insecure=otlp_config.insecure,
-                    )
+                    ),
                 )
             provider.add_span_processor(processor)
-    
+
         trace.set_tracer_provider(provider)
 
     # Instrument logging to inject otelTraceID and otelSpanID
@@ -57,9 +57,9 @@ def setup_logging(
             "formatter": "json",
             "stream": "ext://sys.stdout",
             "level": logger_config.level.value,
-        }
+        },
     }
-    
+
     if logger_config.path:
         handlers["file"] = {
             "class": "logging.FileHandler",
@@ -92,7 +92,7 @@ def setup_logging(
         },
         "loggers": {
             # Configure third-party loggers if needed
-        }
+        },
     }
 
     # Set external loggers to use our handlers and level

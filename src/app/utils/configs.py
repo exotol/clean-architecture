@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import StrEnum
 
 from dynaconf import Dynaconf
@@ -9,6 +11,7 @@ from app.core.constants import PATH_TO_SETTINGS
 
 
 def load_settings() -> Dynaconf:
+    """Load application settings via Dynaconf."""
     return Dynaconf(
         envvar_prefix=False,
         settings_file=[PATH_TO_SETTINGS, PATH_TO_SECRETS, PATH_TO_ENVS],
@@ -19,6 +22,8 @@ def load_settings() -> Dynaconf:
 
 
 class LogLevel(StrEnum):
+    """Supported logging levels."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARN = "WARN"
@@ -30,6 +35,8 @@ class LogLevel(StrEnum):
 
 
 class LoggerConfig(BaseModel):
+    """Logging configuration."""
+
     level: LogLevel
     format: str
     path: str | None
@@ -39,11 +46,15 @@ class LoggerConfig(BaseModel):
 
 
 class MetricsConfig(BaseModel):
+    """Metrics configuration."""
+
     duration_buckets: list[float]
     service_name: str
 
 
 class ServerConfig(BaseModel):
+    """Server configuration."""
+
     host: str
     port: int
     workers: int
@@ -55,6 +66,8 @@ class ServerConfig(BaseModel):
 
 
 class SecurityConfig(BaseModel):
+    """Security-related configuration (CORS, trusted hosts)."""
+
     cors_origins: list[str]
     cors_allow_credentials: bool
     cors_allow_methods: list[str]
@@ -63,6 +76,8 @@ class SecurityConfig(BaseModel):
 
 
 class OTLPConfig(BaseModel):
+    """OpenTelemetry OTLP exporter configuration."""
+
     enabled: bool
     endpoint: str
     service_name: str
@@ -71,6 +86,7 @@ class OTLPConfig(BaseModel):
 
 class SerializationConfig(BaseModel):
     """Configuration for serializer behavior."""
+
     max_depth: int = 500
     warn_depth: int = 100
     max_objects: int = 100_000
@@ -81,6 +97,7 @@ class SerializationConfig(BaseModel):
 
 class ProfilingConfig(BaseModel):
     """Configuration for cProfile profiling."""
+
     enabled: bool = False
     output_dir: str = "profiles"
     sort_by: str = "cumulative"  # cumulative, time, calls

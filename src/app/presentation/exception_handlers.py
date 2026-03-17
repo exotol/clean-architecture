@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import uuid
 
@@ -11,14 +13,15 @@ from app.core.constants import USER_ID
 from app.core.exceptions import ProblemDetail
 from app.core.exceptions import Reasons
 
+
 logger = logging.getLogger(__name__)
 
 
 def business_error_handler(
-    request: Request, exc: Exception
+    request: Request,
+    exc: Exception,
 ) -> JSONResponse:
-    """
-    Обработчик нарушений бизнес-правил.
+    """Обработчик нарушений бизнес-правил.
 
     Ожидает, что exc может иметь атрибуты: status_code, code, detail.
 
@@ -51,8 +54,9 @@ def business_error_handler(
     # не нужен стек-трейс для бизнес-логики, достаточно факта ошибки
     # но для детального разбора лучше давать и stack trace
     logger.warning(
-        f"Business rule violation: {code} - {detail_msg}",
-        exc_info=True,
+        "Business rule violation: %s - %s",
+        code,
+        detail_msg,
         extra={
             "trace_id": trace_id,
             "user_id": request.headers.get(USER_ID),
@@ -85,8 +89,7 @@ def business_error_handler(
 
 
 def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Обработчик ошибок инфраструктуры.
+    """Обработчик ошибок инфраструктуры.
 
     БД, Redis, Celery, внешние API.
 
@@ -108,8 +111,8 @@ def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
     # 2. Логируем реальную ошибку (ДЛЯ РАЗРАБОТЧИКА)
     # exc_info=True запишет полный стек-трейс в логи
     logger.error(
-        f"Infrastructure error: {exc!s}",
-        exc_info=True,
+        "Infrastructure error: %s",
+        exc,
         extra={"trace_id": trace_id},
     )
 
@@ -138,8 +141,7 @@ def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Глобальный обработчик.
+    """Глобальный обработчик.
 
     Eсли что-то просочилось через декоратор
 
@@ -162,7 +164,6 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # exc_info=True запишет полный стек-трейс в логи
     logger.error(
         "Unhandled exception (0)",
-        exc_info=True,
         extra={"trace_id": trace_id, "exc_extra_info": str(exc)},
     )
 
@@ -192,11 +193,10 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 
 
 def request_validation_handler(
-    request: Request, exc: Exception
+    request: Request,
+    exc: Exception,
 ) -> JSONResponse:
-    """
-    Обработчик ошибок валидации Pydantic/FastAPI.
-    """
+    """Обработчик ошибок валидации Pydantic/FastAPI."""
     trace_id = (
         getattr(request.state, TRACE_ID, None)
         or request.headers.get(TRACE_ID, None)
@@ -205,7 +205,8 @@ def request_validation_handler(
 
     # Логируем как warning
     logger.warning(
-        f"Validation error: {exc.errors()}",
+        "Validation error: %s",
+        exc.errors(),
         extra={"trace_id": trace_id},
     )
 

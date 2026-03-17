@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import logging
 from collections import deque
 from dataclasses import asdict
 from dataclasses import is_dataclass
+import logging
 from typing import Any
 
 import orjson
@@ -12,12 +12,12 @@ from starlette.responses import JSONResponse
 
 from app.utils.configs import SerializationConfig
 
+
 logger = logging.getLogger(__name__)
 
 
 class ItemSerializer:
-    """
-    Fail-safe serializer for logging. Guarantees no exceptions are raised.
+    """Fail-safe serializer for logging. Guarantees no exceptions are raised.
 
     Strategy:
     1. Try orjson first (handles 99% of cases fast)
@@ -25,7 +25,7 @@ class ItemSerializer:
     3. If anything fails → return str(obj) or "<unserializable>"
     """
 
-    __slots__ = ("config", "_stats")
+    __slots__ = ("_stats", "config")
 
     def __init__(self, config: SerializationConfig | None = None) -> None:
         self.config = config or SerializationConfig()
@@ -40,19 +40,15 @@ class ItemSerializer:
         }
 
     def serialize(self, obj: Any) -> Any:
-        """
-        Fail-safe entry point. NEVER raises exceptions.
-        Returns serialized object or string fallback.
+        """Fail-safe entry point. Never raises exceptions.
+
+        Returns a JSON-compatible object or a string fallback.
         """
         try:
             return self._serialize_internal(obj)
-        except Exception as e:
+        except Exception:
             self._stats["errors_caught"] += 1
-            logger.error(
-                "Serialization failed completely, using fallback: %s",
-                str(e)[:200],
-                exc_info=False,
-            )
+            logger.exception("Serialization failed completely, using fallback")
             return self._safe_fallback(obj)
 
     def _serialize_internal(self, obj: Any) -> Any:
@@ -64,11 +60,8 @@ class ItemSerializer:
                         obj,
                         default=self.orjson_default,
                         option=orjson.OPT_SERIALIZE_NUMPY,
-                    )
+                    ),
                 )
-                self._stats["orjson_success"] += 1
-                return serialized
-
             except (TypeError, ValueError, RecursionError) as e:
                 logger.debug(
                     "orjson failed (%s), trying iterative: %s",
@@ -76,6 +69,9 @@ class ItemSerializer:
                     str(e)[:100],
                 )
                 self._stats["orjson_fallback"] += 1
+            else:
+                self._stats["orjson_success"] += 1
+                return serialized
 
         return self._serialize_iterative(obj)
 
@@ -84,36 +80,56 @@ class ItemSerializer:
         """Custom handler for orjson for types it doesn't support."""
         if isinstance(obj, BaseModel):
             return obj.model_dump(mode="json")
-
         if is_dataclass(obj) and not isinstance(obj, type):
             return asdict(obj)
-
         if isinstance(obj, (set, frozenset)):
             return list(obj)
 
-        if hasattr(obj, "isoformat"):
-            return obj.isoformat()
+        iso = ItemSerializer._try_isoformat(obj)
+        if iso is not None:
+            return iso
 
-        if hasattr(obj, "hex"):
-            attr = obj.hex
-            if callable(attr):
-                return attr()
-            return attr
+        hx = ItemSerializer._try_hex(obj)
+        if hx is not None:
+            return hx
 
-        # Skip callable objects (functions, methods, mocks) to avoid issues
         if callable(obj):
             return f"<{type(obj).__name__}>"
 
-        if hasattr(obj, "__dict__"):
-            return obj.__dict__
+        obj_dict = getattr(obj, "__dict__", None)
+        if obj_dict is not None:
+            return obj_dict
 
-        # Final fallback for orjson - convert to string
         return str(obj)
 
+    @staticmethod
+    def _try_isoformat(obj: Any) -> str | None:
+        attr = getattr(obj, "isoformat", None)
+        if callable(attr):
+            try:
+                return attr()
+            except Exception as exc:
+                logger.debug("isoformat() failed: %s", exc.__class__.__name__)
+                return None
+        return None
+
+    @staticmethod
+    def _try_hex(obj: Any) -> str | None:
+        attr = getattr(obj, "hex", None)
+        if callable(attr):
+            try:
+                return attr()
+            except Exception as exc:
+                logger.debug("hex() failed: %s", exc.__class__.__name__)
+                return None
+        if isinstance(attr, str):
+            return attr
+        return None
+
     def _serialize_iterative(self, root: Any) -> Any:
-        """
-        Iterative serialization with cycle detection.
-        Soft limits - logs warnings but doesn't raise.
+        """Iterative serialization with cycle detection.
+
+        Soft limits: logs warnings but never raises.
         """
         if self._is_primitive(root):
             return self._serialize_primitive(root)
@@ -183,8 +199,9 @@ class ItemSerializer:
                     seen[obj_id] = result_list
                 else:
                     seen[obj_id] = self._serialize_primitive(current)
-            except Exception as e:
-                logger.debug("Failed to serialize %s: %s", type(current).__name__, e)
+            except Exception as exc:
+                logger.debug("Failed to serialize %s", type(current).__name__)
+                logger.debug("Serialization error: %s", exc.__class__.__name__)
                 seen[obj_id] = self._safe_fallback(current)
 
         # Phase 2: Resolve references
@@ -194,17 +211,26 @@ class ItemSerializer:
                 continue
             if isinstance(serialized, dict):
                 for key, val in list(serialized.items()):
-                    if isinstance(val, tuple) and len(val) == 2 and val[0] == "__ref__":
+                    if (
+                        isinstance(val, tuple)
+                        and len(val) == 2
+                        and val[0] == "__ref__"
+                    ):
                         ref_id = val[1]
                         serialized[key] = seen.get(ref_id, "<unresolved>")
             elif isinstance(serialized, list):
                 for i, val in enumerate(serialized):
-                    if isinstance(val, tuple) and len(val) == 2 and val[0] == "__ref__":
+                    if (
+                        isinstance(val, tuple)
+                        and len(val) == 2
+                        and val[0] == "__ref__"
+                    ):
                         ref_id = val[1]
                         serialized[i] = seen.get(ref_id, "<unresolved>")
 
         self._stats["max_depth_reached"] = max(
-            self._stats["max_depth_reached"], max_depth_seen
+            self._stats["max_depth_reached"],
+            max_depth_seen,
         )
         self._stats["total_objects"] += object_count
 
@@ -220,17 +246,22 @@ class ItemSerializer:
             return obj
 
         try:
-            if hasattr(obj, "isoformat"):
-                return obj.isoformat()
-            if hasattr(obj, "hex"):
-                attr = obj.hex
-                if callable(attr):
-                    return attr()
-                return attr
+            iso = self._try_isoformat(obj)
+            if iso is not None:
+                return iso
+
+            hx = self._try_hex(obj)
+            if hx is not None:
+                return hx
+
             if hasattr(obj, "__dict__"):
                 return obj.__dict__
             return str(obj)
-        except Exception:
+        except Exception as exc:
+            logger.debug(
+                "Primitive serialization failed: %s",
+                exc.__class__.__name__,
+            )
             return self._safe_fallback(obj)
 
     def _safe_fallback(self, obj: Any) -> str:
@@ -238,7 +269,8 @@ class ItemSerializer:
         try:
             type_name = type(obj).__name__
             return f"<{type_name}>"
-        except Exception:
+        except Exception as exc:
+            logger.debug("Fallback failed: %s", exc.__class__.__name__)
             return "<unserializable>"
 
     def get_stats(self) -> dict[str, int]:
@@ -252,10 +284,16 @@ class ItemSerializer:
 
 
 class AdvORJSONResponse(JSONResponse):
+    """JSONResponse implementation backed by `orjson`."""
+
     media_type = "application/json"
 
     def render(self, content: Any) -> bytes:
-        assert orjson is not None, "orjson must be installed to use ORJSONResponse"
+        """Render response body bytes using `orjson`."""
+        if orjson is None:
+            raise RuntimeError(
+                "orjson must be installed to use ORJSONResponse",
+            )
         return self._serialize_to_bytes(content)
 
     @classmethod
@@ -270,7 +308,3 @@ class AdvORJSONResponse(JSONResponse):
         except (TypeError, ValueError, RecursionError):
             # Fallback: encode string as bytes
             return orjson.dumps(str(obj))
-
-
-
-

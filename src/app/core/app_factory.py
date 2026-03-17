@@ -1,6 +1,9 @@
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
+
+import anyio
 from asgi_correlation_id import CorrelationIdMiddleware
 from dependency_injector.wiring import Provide
 from fastapi import FastAPI
@@ -18,15 +21,18 @@ from app.infrastructure.observability.logging import setup_logging
 from app.infrastructure.observability.metrics import setup_metrics
 from app.infrastructure.observability.profiling import ProfilingMiddleware
 from app.presentation.api.application_api import create_main_router
-from app.presentation.api.exception_handlers import (
-    business_error_handler,
-    global_exception_handler,
-    infra_error_handler,
-    request_validation_handler,
-)
-from app.utils.configs import SecurityConfig, ProfilingConfig
+from app.presentation.api.exception_handlers import business_error_handler
+from app.presentation.api.exception_handlers import global_exception_handler
+from app.presentation.api.exception_handlers import infra_error_handler
+from app.presentation.api.exception_handlers import request_validation_handler
+from app.utils.configs import ProfilingConfig
+from app.utils.configs import SecurityConfig
 from app.utils.configs import load_settings
 from app.utils.serializer import AdvORJSONResponse
+
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 def create_middleware_list(
@@ -35,8 +41,9 @@ def create_middleware_list(
     ],
     profiling_config: ProfilingConfig = Provide[
         AppContainer.infra_container.profiling_config
-    ]
+    ],
 ) -> list[Middleware]:
+    """Create the middleware list based on configuration."""
     middleware_list = [
         Middleware(
             CorrelationIdMiddleware,
@@ -56,40 +63,29 @@ def create_middleware_list(
         ),
     ]
     if profiling_config.enabled:
-        middleware_list.append(Middleware(
-            ProfilingMiddleware,
-            config=profiling_config
-        ))
+        middleware_list.append(
+            Middleware(
+                ProfilingMiddleware,
+                config=profiling_config,
+            ),
+        )
 
     return middleware_list
 
 
 def add_exception_handlers(app: FastAPI) -> None:
+    """Register exception handlers on the FastAPI app."""
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
-    app.add_exception_handler(RequestValidationError, request_validation_handler)
+    app.add_exception_handler(
+        RequestValidationError,
+        request_validation_handler,
+    )
     app.add_exception_handler(Exception, global_exception_handler)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan context manager."""
-    # Startup
-    container: AppContainer = app.state.container
-    init_result = container.init_resources()
-    if init_result is not None:
-        await init_result
-    yield
-    # Shutdown
-    shutdown_result = container.shutdown_resources()
-    if shutdown_result is not None:
-        await shutdown_result
-
-
 def create_app() -> FastAPI:
-    """
-    Factory function to create the FastAPI application.
-    """
+    """Factory function to create the FastAPI application."""
     container: AppContainer = AppContainer()
     container.infra_container.config.from_dict(load_settings().as_dict())
 
@@ -99,14 +95,21 @@ def create_app() -> FastAPI:
     setup_logging(logger_config=logger_config, otlp_config=otlp_config)
     setup_metrics()
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        app.state.container = container
+        container.wire(packages=["app"])
+        try:
+            await anyio.lowlevel.checkpoint()
+            yield
+        finally:
+            container.unwire()
+
     app = FastAPI(
         middleware=create_middleware_list(),
         lifespan=lifespan,
         default_response_class=AdvORJSONResponse,
     )
-
-    # Store container in app state for lifespan access
-    app.state.container = container
 
     app.include_router(create_main_router())
     add_exception_handlers(app)
