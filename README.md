@@ -11,6 +11,12 @@
 - 🧪 **Data-Driven Testing** — pytest + Pydantic schemas
 - 📈 **Profiling** — cProfile middleware, snakeviz, speedscope
 
+## Неприкосновенные правила качества (для всех, включая агентов)
+
+- **Запрещено подавлять проверки в коде**: `# noqa`, `# type: ignore` и аналоги недопустимы.
+- **Запрещено самовольно добавлять игноры в `pyproject.toml`** (например `extend-per-file-ignores`, `ignore` и т.п.).
+- **Любая проблема должна решаться**, а не скрываться подавлением линтера/типов.
+
 ## Быстрый старт
 
 ```bash
@@ -37,6 +43,7 @@ make run.pytest
 | [Профилирование](docs/profiling.md) | Инструменты анализа производительности |
 | [Makefile команды](docs/makefile.md) | Справочник всех команд автоматизации |
 | [Конфигурация](docs/configuration.md) | Описание всех настроек в settings.toml |
+| [Коммиты](docs/commits.md) | Стандарт Conventional Commits |
 
 ## Структура проекта
 

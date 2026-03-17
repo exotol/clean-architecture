@@ -20,7 +20,7 @@ dependencies = [
     "snakeviz>=2.2.2",
     "speedscope>=1.0",
     "opentelemetry-instrumentation-logging>=0.60b1",
-    "python-json-logger>=4.0.0",
+    "structlog>=24.1.0",
 ]
 
 [dependency-groups]
@@ -38,9 +38,15 @@ dev = [
     "types-colorama>=0.4.15.20250801",
     "wemake-python-styleguide>=1.4.0",
     "pytest-cov>=7.0.0",
+    "commitizen>=4.13.9",
 ]
 
 
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
 
 # ==============================================================================
 #                                    RUFF
@@ -308,6 +314,7 @@ extend-immutable-calls = [
 # -----------------------------------------------------------------------------
 # Per-file исключения (для тестов, миграций и т.д.)
 # -----------------------------------------------------------------------------
+# Policy: new ignore entries are forbidden; fix issues in code, do not suppress.
 [tool.ruff.lint.extend-per-file-ignores]
 # ТЕСТЫ: ослабляем некоторые правила
 "tests/*" = [
@@ -449,7 +456,7 @@ disallow_untyped_decorators = true    # Сложные декораторы с D
 # ==============================================================================
 
 [tool.coverage.report]
-fail_under = 95                        # Минимальный порог покрытия (%)
+fail_under = 97                        # Минимальный порог покрытия (%)
 
 # Строки, исключаемые из подсчёта покрытия
 exclude_lines = [
