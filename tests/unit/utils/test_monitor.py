@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.containers import AppContainer
 from app.core.events import Events
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
 from app.utils.monitor import _get_bound_arguments
 from app.utils.monitor import monitor
+
+
+if TYPE_CHECKING:
+    from app.core.containers import AppContainer
 
 
 @pytest.fixture(autouse=True)
