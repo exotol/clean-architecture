@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
 
 from app.presentation.api.schemas.search import SearchRequest
 from tests.schemas.e2e.api.search import InvalidSearchEntity
@@ -7,7 +10,11 @@ from tests.schemas.e2e.api.search import InvalidSearchExpected
 from tests.schemas.e2e.api.search import SearchExpected
 
 
-@pytest.mark.anyio()
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
@@ -40,7 +47,8 @@ async def test_search_endpoint_success(
 ) -> None:
     # Act
     response = await client.post(
-        "/v1/answer/generate", json=entity.model_dump()
+        "/v1/answer/generate",
+        json=entity.model_dump(),
     )
 
     # Assert
@@ -63,19 +71,19 @@ async def test_search_endpoint_success(
 
     assert len(inner_data["documents"]) == 1, (
         f"Test failed, actual document "
-        f"count = {len(inner_data["documents"])}, "
+        f"count = {len(inner_data['documents'])}, "
         f"but expected count was = 1"
     )
 
     if expected.text_part:
         first_doc = inner_data["documents"][0]
         assert expected.text_part in first_doc["text"], (
-            f"Test failed, actual text = {first_doc["text"]}, "
+            f"Test failed, actual text = {first_doc['text']}, "
             f"but expected to contain = {expected.text_part}"
         )
 
 
-@pytest.mark.anyio()
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [

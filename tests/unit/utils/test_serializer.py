@@ -1,11 +1,17 @@
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
-import pytest
-from pydantic import BaseModel
+from dataclasses import dataclass
+import datetime
+import json
+from typing import Any
 from unittest.mock import patch
+import uuid
+
+from pydantic import BaseModel
+import pytest
 
 from app.utils.configs import SerializationConfig
+from app.utils.serializer import AdvORJSONResponse
 from app.utils.serializer import ItemSerializer
 
 
@@ -176,12 +182,13 @@ def test_serialize_deep_nesting(serializer: ItemSerializer) -> None:
         level += 1
 
     assert level == depth - 1, (
-        f"Depth mismatch. "
-        f"expected={depth - 1}, actual={level}"
+        f"Depth mismatch. expected={depth - 1}, actual={level}"
     )
 
 
-def test_fallback_when_orjson_disabled(serializer_no_orjson: ItemSerializer) -> None:
+def test_fallback_when_orjson_disabled(
+    serializer_no_orjson: ItemSerializer,
+) -> None:
     data = {"key": "value"}
     result = serializer_no_orjson.serialize(data)
 
@@ -203,8 +210,7 @@ def test_stats_tracking(serializer: ItemSerializer) -> None:
 
     stats = serializer.get_stats()
     assert stats["orjson_success"] >= 1 or stats["orjson_fallback"] >= 1, (
-        f"Stats should be tracked. "
-        f"stats={stats}"
+        f"Stats should be tracked. stats={stats}"
     )
 
 
@@ -214,74 +220,73 @@ def test_reset_stats(serializer: ItemSerializer) -> None:
 
     stats = serializer.get_stats()
     assert all(v == 0 for v in stats.values()), (
-        f"Stats should be reset. "
-        f"stats={stats}"
+        f"Stats should be reset. stats={stats}"
     )
 
 
 def test_cycle_detection(serializer: ItemSerializer) -> None:
     # Use config with detect_cycles=True
     serializer.config.detect_cycles = True
-    
+
     data = {"key": "value"}
     data["self"] = data  # Create cycle
-    
+
     # Iterate with no orjson to trigger python serializer
     serializer.config.use_orjson = False
-    
+
     result = serializer.serialize(data)
-    
-    # We expect cycle to be detected and skipped or handled without recursion error
+
+    # We expect cycle to be detected and skipped (no recursion error).
     # The implementation skips if seen
     assert result["key"] == "value"
-    
+
     stats = serializer.get_stats()
     assert stats["cycles_detected"] >= 1
 
-
     # ... previous tests ...
+
 
 def test_max_depth_limit(serializer: ItemSerializer) -> None:
     # Set small max depth and disable orjson to force iterative
     serializer.config.max_depth = 5
     serializer.config.use_orjson = False
-    
+
     # Create deeply nested dict
     data: dict[str, Any] = {"level": 0}
     current = data
     for i in range(1, 10):
         current["nested"] = {"level": i}
         current = current["nested"]
-        
+
     result = serializer.serialize(data)
-    
+
     # Verify we hit the limit
     # The stats should reflect this
     stats = serializer.get_stats()
     assert stats["max_depth_reached"] >= 5
-    
-    # Verify content structure is preserved up to limit
-    # At some point, "nested" should contain "<max_depth_exceeded>" or similar if we implemented it that way
+
+    # Verify content structure is preserved up to limit.
+    # At some point, "nested" should contain "<max_depth_exceeded>" marker.
     # In _serialize_iterative: seen[obj_id] = "<max_depth_exceeded>"
-    
-    # Simple JSON traversal to check for truncation marker
-    import json
-    # Use default=str because <max_depth_exceeded> is a string, but other things might be ref tuples
+
+    # Use default=str because other things might be ref tuples.
     # Actually _serialize_iterative resolves references.
     json_str = json.dumps(result, default=str)
-    assert "<max_depth_exceeded>" in json_str or "unresolved" in json_str, f"Should have truncated: {json_str}"
+    assert "<max_depth_exceeded>" in json_str or "unresolved" in json_str, (
+        f"Should have truncated: {json_str}"
+    )
 
 
 def test_max_objects_limit(serializer: ItemSerializer) -> None:
     # Set max objects and disable orjson
     serializer.config.max_objects = 10
     serializer.config.use_orjson = False
-    
+
     # Create list with many objects
     data = [{"i": i} for i in range(20)]
-    
-    result = serializer.serialize(data)
-    
+
+    serializer.serialize(data)
+
     # It should be truncated or handled safely
     stats = serializer.get_stats()
     # total_objects might stop at max_objects + 1
@@ -289,17 +294,15 @@ def test_max_objects_limit(serializer: ItemSerializer) -> None:
 
 
 def test_adv_orjson_response_render() -> None:
-    from app.utils.serializer import AdvORJSONResponse
-    
     resp = AdvORJSONResponse({"foo": "bar"})
     content = resp.render({"foo": "bar"})
     assert content == b'{"foo":"bar"}'
-    
+
     # Test fallback in render
     # First call failed (TypeError), second call (fallback) succeeds
-    # We mock the return value of the second call explicitly to avoid string formatting issues
+    # We mock the second return value to avoid formatting issues.
     fallback_json = b'{"fallback": "json"}'
-    
+
     with patch("orjson.dumps", side_effect=[TypeError, fallback_json]):
         content = resp.render({"foo": "bar"})
         assert content == fallback_json
@@ -308,23 +311,26 @@ def test_adv_orjson_response_render() -> None:
 def test_serialize_exception_handling(serializer: ItemSerializer) -> None:
     # Mock _serialize_internal to raise Exception
     # Use patch on the class because of __slots__ restriction on instance
-    with patch("app.utils.serializer.ItemSerializer._serialize_internal", side_effect=Exception("Boom")):
+    with patch(
+        "app.utils.serializer.ItemSerializer._serialize_internal",
+        side_effect=Exception("Boom"),
+    ):
         result = serializer.serialize({"key": "value"})
         assert result == "<dict>" or "unserializable" in result
-        
+
         stats = serializer.get_stats()
         assert stats["errors_caught"] >= 1
 
 
-def test_serialize_iterative_complex_structure(serializer_no_orjson: ItemSerializer) -> None:
-    # Use serializer without orjson to force usage of _serialize_iterative 
+def test_serialize_iterative_complex_structure(
+    serializer_no_orjson: ItemSerializer,
+) -> None:
+    # Use serializer without orjson to force usage of _serialize_iterative
     # and cover branches like list processing, primitives in lists, etc.
-    from dataclasses import dataclass
-    
     @dataclass
     class Person:
         name: str
-    
+
     data = {
         "list_of_ints": [1, 2, 3],
         "list_of_str": ["a", "b"],
@@ -332,11 +338,11 @@ def test_serialize_iterative_complex_structure(serializer_no_orjson: ItemSeriali
         "tuple": (1, 2),
         "person": Person("John"),
         "dict": {"a": 1},
-        "primitive": 42
+        "primitive": 42,
     }
-    
+
     result = serializer_no_orjson.serialize(data)
-    
+
     # Check structure
     assert result["list_of_ints"] == [1, 2, 3]
     assert result["person"] == {"name": "John"}
@@ -347,78 +353,74 @@ def test_serialize_iterative_complex_structure(serializer_no_orjson: ItemSeriali
 
 def test_orjson_default_types(serializer: ItemSerializer) -> None:
     # Test orjson_default handler with specific types
-    import datetime
-    import uuid
-    from dataclasses import dataclass
-    
     @dataclass
     class Point:
         x: int
         y: int
-        
+
     class CustomObj:
         def __init__(self):
             self.a = 1
-            
+
     uid = uuid.uuid4()
-    now = datetime.datetime.now()
-    
+    now = datetime.datetime.now(tz=datetime.UTC)
+
     data = {
         "uuid": uid,
         "date": now,
         "point": Point(1, 2),
         "set": {1, 2},
         "custom": CustomObj(),
-        "func": lambda x: x
+        "func": lambda x: x,
     }
-    
+
     # orjson uses default handler for these
     result = serializer.serialize(data)
-    
+
     assert result["uuid"] == str(uid)
     assert result["custom"] == {"a": 1}
     assert "<lambda>" in result["func"] or "<function" in result["func"]
 
 
-def test_serialize_iterative_primitives_fallback(serializer_no_orjson: ItemSerializer) -> None:
+def test_serialize_iterative_primitives_fallback(
+    serializer_no_orjson: ItemSerializer,
+) -> None:
     class Unserializable:
-        __slots__ = () # No __dict__ to bypass that check
+        __slots__ = ()  # No __dict__ to bypass that check
+
         def __str__(self):
             raise ValueError("No string for you")
+
         def __repr__(self):
             raise ValueError("No repr for you")
-            
+
     obj = Unserializable()
     result = serializer_no_orjson.serialize(obj)
     assert result == "<Unserializable>"
 
 
 def test_iterative_custom_types(serializer_no_orjson: ItemSerializer) -> None:
-    import datetime
-    import uuid
-    from pydantic import BaseModel
-    
     class MyModel(BaseModel):
         x: int
-        
+
     class HasDict:
         def __init__(self):
             self.x = 1
-            
+
     uid = uuid.uuid4()
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(tz=datetime.UTC)
     model = MyModel(x=10)
     has_dict = HasDict()
-    
+
     data = {
         "uuid": uid,
         "date": now,
         "model": model,
-        "has_dict": has_dict
+        "has_dict": has_dict,
     }
-    
+
     result = serializer_no_orjson.serialize(data)
-    
+
     assert result["uuid"] == uid.hex
     assert result["date"] == now.isoformat()
     assert result["model"] == {"x": 10}
@@ -428,83 +430,77 @@ def test_iterative_custom_types(serializer_no_orjson: ItemSerializer) -> None:
 def test_serialize_orjson_error_fallback(serializer: ItemSerializer) -> None:
     # Ensure orjson is used
     serializer.config.use_orjson = True
-    
+
     with patch("orjson.dumps", side_effect=TypeError("Mocked TypeError")):
         # Should fallback to iterative
         # We pass something simple
         result = serializer.serialize({"key": "value"})
-        
+
         assert result == {"key": "value"}
-        
+
         stats = serializer.get_stats()
         assert stats["orjson_fallback"] >= 1
         assert stats["orjson_success"] == 0
 
 
 def test_orjson_default_custom_methods(serializer: ItemSerializer) -> None:
-    # Test orjson_default with custom objects that resemble primitives but aren't
-    # This forces orjson to call default, and we verify that it handles them via duck typing
-    
+    # Test orjson_default with custom objects resembling primitives.
+    # This forces orjson to call default; we verify duck-typing behavior.
+
     class CustomIso:
-        def isoformat(self):
+        @staticmethod
+        def isoformat() -> str:
             return "2023-01-01"
-            
+
     class CustomHex:
         @property
         def hex(self):
             return "deadbeef"
-            
+
     class CustomHexMethod:
-        def hex(self):
+        @staticmethod
+        def hex() -> str:
             return "feedface"
-            
+
     data = {
         "iso": CustomIso(),
         "hex_prop": CustomHex(),
-        "hex_method": CustomHexMethod()
+        "hex_method": CustomHexMethod(),
     }
-    
+
     # Ensure orjson is used
     serializer.config.use_orjson = True
-    
+
     result = serializer.serialize(data)
-    
+
     assert result["iso"] == "2023-01-01"
     assert result["hex_prop"] == "deadbeef"
     assert result["hex_method"] == "feedface"
 
 
-def test_orjson_default_dataclass_type(serializer: ItemSerializer) -> None:
-    from dataclasses import dataclass
-    
+def test_orjson_default_dataclass_type() -> None:
     @dataclass
     class MyData:
         x: int
-        
+
     # Test passing the class itself, not an instance
     # This covers "is_dataclass(obj) and not isinstance(obj, type)"
-    # Since it is a type, the condition fails, and we proceed to other checks or fallback
-    
+    # Since it is a type, the condition fails, and we proceed to other checks.
+
     result = ItemSerializer.orjson_default(MyData)
-    
-    result = ItemSerializer.orjson_default(MyData)
-    
+
     # It should fallback to str(MyData)
     assert isinstance(result, str)
     assert len(result) > 0
 
 
-def test_orjson_default_dataclass_instance(serializer: ItemSerializer) -> None:
-    from dataclasses import dataclass, asdict
-    
+def test_orjson_default_dataclass_instance() -> None:
     @dataclass
     class MyData:
         x: int
-        
+
     obj = MyData(x=42)
     # Direct call to cover line 89
     result = ItemSerializer.orjson_default(obj)
-    
+
     assert result == {"x": 42}
-
-
