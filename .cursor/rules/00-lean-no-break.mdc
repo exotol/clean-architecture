@@ -27,6 +27,6 @@ alwaysApply: true
 - Новый/изменённый код покрывать тестами (data-driven, см. `docs/testing.md`).
 - Константы держать в `app.core.constants`; конфиг — Dynaconf, без размазывания `os.getenv` по коду.
 - Соблюдать Clean Architecture: зависимости внутрь, импорты только абсолютные (`app.*`), типы и docstrings по проекту.
-- Сообщения коммитов — по стандарту Conventional Commits (см. `docs/commits.md`).
+- Сообщения коммитов **строго** по стандарту Conventional Commits: только допустимые типы (`feat`, `fix`, `docs`, `refactor`, `chore` и др. из `docs/commits.md`); префиксы `core`, `config` и т.п. **не являются типами** — контекст указывается в скобках: `тип(контекст): описание`.
 
-При сомнениях — смотреть **AGENTS.md** и **docs/**.
+При сомнениях — смотреть **AGENTS.md** и **docs/commits.md**.
