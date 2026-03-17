@@ -1,28 +1,18 @@
-"""Единообразное создание HTTP-клиентов (httpx) из настроек."""
+"""HTTP-клиент (httpx) как ресурс DI: создание и закрытие только через контейнер."""
 
 from __future__ import annotations
 
-import contextlib
-from typing import TYPE_CHECKING
-
 import httpx
+from dependency_injector import resources
+
+from app.utils.configs import HttpClientConfig
 
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from app.utils.configs import HttpClientConfig
-
-
-def create_async_client(
+def _create_client(
     config: HttpClientConfig,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> httpx.AsyncClient:
-    """Создать AsyncClient с транспортом и таймаутами из конфига.
-
-    Если передан transport (например ASGITransport для тестов),
-    он используется; иначе — транспорт по умолчанию с limits из конфига.
-    """
+    """Собрать AsyncClient из конфига и опционального транспорта (внутренний)."""
     timeout = httpx.Timeout(config.timeout_seconds)
     limits = httpx.Limits(
         max_connections=config.max_connections,
@@ -37,14 +27,21 @@ def create_async_client(
     )
 
 
-@contextlib.asynccontextmanager
-async def async_client_context(
-    config: HttpClientConfig,
-    transport: httpx.AsyncBaseTransport | None = None,
-) -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Контекстный менеджер: создаёт клиент и закрывает при выходе."""
-    client = create_async_client(config, transport=transport)
-    try:
-        yield client
-    finally:
-        await client.aclose()
+class HttpClientResource(resources.AsyncResource[httpx.AsyncClient]):
+    """Ресурс DI: создаёт httpx.AsyncClient при init, закрывает при shutdown."""
+
+    async def init(
+        self,
+        config: HttpClientConfig,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> httpx.AsyncClient:
+        """Создать и вернуть клиент; конфиг и транспорт инжектируются из контейнера."""
+        return _create_client(config, transport=transport)
+
+    async def shutdown(
+        self,
+        client: httpx.AsyncClient | None,
+    ) -> None:
+        """Закрыть клиент при остановке контейнера."""
+        if client is not None:
+            await client.aclose()
