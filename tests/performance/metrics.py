@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gevent
 from gevent.pywsgi import WSGIServer
 from locust import events
@@ -22,10 +24,12 @@ def setup_locust_metrics() -> None:
 
     # Define Instruments
     requests_counter = meter.create_counter(
-        "locust_requests_total", description="Total number of requests"
+        "locust_requests_total",
+        description="Total number of requests",
     )
     failures_counter = meter.create_counter(
-        "locust_failures_total", description="Total number of failures"
+        "locust_failures_total",
+        description="Total number of failures",
     )
     duration_histogram = meter.create_histogram(
         "locust_request_duration_seconds",
@@ -60,9 +64,6 @@ def start_metrics_server() -> None:
     Start Prometheus WSGI server in a gevent greenlet.
     """
     try:
-        print(
-            f"Starting Prometheus WSGI server on port {config.METRICS_PORT}"
-        )
         app = make_wsgi_app()
         http_server = WSGIServer(("", config.METRICS_PORT), app)
         gevent.spawn(http_server.serve_forever)

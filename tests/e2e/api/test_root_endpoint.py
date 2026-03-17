@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
 
 from app.core.constants import HELLO_WORLD
 from app.presentation.api.schemas.root import HelloWorld
@@ -7,14 +10,19 @@ from tests.schemas.e2e.api.root import RootEntity
 from tests.schemas.e2e.api.root import RootExpected
 
 
-@pytest.mark.anyio()
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
         pytest.param(
             RootEntity(path="/common/"),
             RootExpected(
-                status_code=200, json_body=HelloWorld(message=HELLO_WORLD)
+                status_code=200,
+                json_body=HelloWorld(message=HELLO_WORLD),
             ),
             id="root_success",
         ),

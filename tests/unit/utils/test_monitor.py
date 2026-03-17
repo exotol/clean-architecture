@@ -1,4 +1,5 @@
-import asyncio
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -37,9 +38,20 @@ def mock_dependencies(
     mock_tracing_strategy,
     mock_metrics_strategy,
 ):
-    with patch("app.utils.monitor._get_logging_strategy", return_value=mock_logging_strategy), \
-         patch("app.utils.monitor._get_tracing_strategy", return_value=mock_tracing_strategy), \
-         patch("app.utils.monitor._get_metrics_strategy", return_value=mock_metrics_strategy):
+    with (
+        patch(
+            "app.utils.monitor._get_logging_strategy",
+            return_value=mock_logging_strategy,
+        ),
+        patch(
+            "app.utils.monitor._get_tracing_strategy",
+            return_value=mock_tracing_strategy,
+        ),
+        patch(
+            "app.utils.monitor._get_metrics_strategy",
+            return_value=mock_metrics_strategy,
+        ),
+    ):
         yield
 
 
@@ -64,8 +76,8 @@ def test_monitor_sync_success(
     mock_logging_strategy.log_start.assert_called_once()
     mock_logging_strategy.log_success.assert_called_once()
     mock_metrics_strategy.record_request.assert_called_once()
-    
-    args, kwargs = mock_metrics_strategy.record_request.call_args
+
+    _args, kwargs = mock_metrics_strategy.record_request.call_args
     assert kwargs["status"] == "success"
     assert kwargs["event_name"] == "test_sync"
 
@@ -89,8 +101,8 @@ def test_monitor_sync_error(
     # Assert
     mock_logging_strategy.log_error.assert_called_once()
     mock_metrics_strategy.record_request.assert_called_once()
-    
-    args, kwargs = mock_metrics_strategy.record_request.call_args
+
+    _args, kwargs = mock_metrics_strategy.record_request.call_args
     assert kwargs["status"] == "error"
     assert kwargs["error_type"] == "business"
 
@@ -108,7 +120,7 @@ def test_monitor_sync_error_infrastructure(
         sync_fail()
 
     # Assert
-    args, kwargs = mock_metrics_strategy.record_request.call_args
+    _args, kwargs = mock_metrics_strategy.record_request.call_args
     assert kwargs["error_type"] == "infrastructure"
 
 
@@ -130,14 +142,16 @@ def test_monitor_sync_suppress_exception(
 def test_monitor_callback_error(mock_logging_strategy: MagicMock) -> None:
     # Test that exception in callback is suppressed
     callback = MagicMock(side_effect=ValueError("Callback failed"))
-    
-    @monitor(Events.SEARCH_SERVICE, action_when_exception=callback, reraise=False)
+
+    @monitor(
+        Events.SEARCH_SERVICE, action_when_exception=callback, reraise=False,
+    )
     def func():
         raise RuntimeError("Original error")
-        
+
     # Should not raise
     func()
-    
+
     callback.assert_called_once()  # Should return None if suppressed
     mock_logging_strategy.log_error.assert_called_once()
 
@@ -158,7 +172,10 @@ async def test_monitor_async_success(
     # Assert
     assert result == 10
     mock_metrics_strategy.record_request.assert_called_once()
-    assert mock_metrics_strategy.record_request.call_args[1]["status"] == "success"
+    assert (
+        mock_metrics_strategy.record_request.call_args[1]["status"]
+        == "success"
+    )
 
 
 @pytest.mark.asyncio
@@ -176,4 +193,6 @@ async def test_monitor_async_error(
 
     # Assert
     mock_metrics_strategy.record_request.assert_called_once()
-    assert mock_metrics_strategy.record_request.call_args[1]["status"] == "error"
+    assert (
+        mock_metrics_strategy.record_request.call_args[1]["status"] == "error"
+    )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from locust import HttpUser
 from locust import between
 from locust import constant

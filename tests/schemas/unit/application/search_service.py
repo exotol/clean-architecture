@@ -1,8 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from app.domain.entities.document import Document
+
+if TYPE_CHECKING:
+    from app.domain.entities.document import Document
 
 
 class SearchServiceEntity(BaseModel):

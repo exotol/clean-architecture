@@ -1,25 +1,28 @@
+from __future__ import annotations
+
 from unittest.mock import AsyncMock
+
 import pytest
-from app.core.exceptions import InfrastructureError
 
 from app.application.services.search_service import SearchService
+from app.core.exceptions import InfrastructureError
 from app.domain.entities.document import Document
 from app.domain.interfaces.search_repository import ISearchRepository
 from tests.schemas.unit.application.search_service import SearchServiceEntity
 from tests.schemas.unit.application.search_service import SearchServiceExpected
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_repository() -> AsyncMock:
     return AsyncMock(spec=ISearchRepository)
 
 
-@pytest.fixture()
+@pytest.fixture
 def search_service(mock_repository: AsyncMock) -> SearchService:
     return SearchService(repository=mock_repository)
 
 
-@pytest.mark.anyio()
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
@@ -29,7 +32,8 @@ def search_service(mock_repository: AsyncMock) -> SearchService:
                 mock_return=[Document(text="res1"), Document(text="res2")],
             ),
             SearchServiceExpected(
-                count=2, results=[Document(text="res1"), Document(text="res2")]
+                count=2,
+                results=[Document(text="res1"), Document(text="res2")],
             ),
             id="success_multi_result",
         ),
@@ -40,7 +44,8 @@ def search_service(mock_repository: AsyncMock) -> SearchService:
         ),
         pytest.param(
             SearchServiceEntity(
-                query="single", mock_return=[Document(text="res1")]
+                query="single",
+                mock_return=[Document(text="res1")],
             ),
             SearchServiceExpected(count=1, results=[Document(text="res1")]),
             id="success_single_result",
@@ -70,7 +75,7 @@ async def test_search_success(
     )
 
 
-@pytest.mark.anyio()
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
@@ -104,4 +109,3 @@ async def test_search_error(
     # Act
     with pytest.raises(expected.expected_exception):
         await search_service.search(query=entity.query)
-

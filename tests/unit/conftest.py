@@ -1,11 +1,12 @@
 """Unit tests configuration with DI container setup."""
 
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 import pytest
 
 from app.core.containers import AppContainer
-from app.utils.configs import load_settings
 from app.utils.serializer import ItemSerializer
 
 
@@ -15,12 +16,12 @@ def setup_di_container() -> None:
     container = AppContainer()
     # container.infra_container().config.from_dict(load_settings().as_dict())
     container.infra_container().config.from_dict({})
-    
+
     # Mock observability strategies to prevent external connections/hangs
     container.infra_container.logging_strategy.override(MagicMock())
     container.infra_container.tracing_strategy.override(MagicMock())
     container.infra_container.metrics_strategy.override(MagicMock())
-    
+
     container.wire(packages=["app"])
 
 

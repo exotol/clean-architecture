@@ -1,12 +1,19 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
 
 from app.presentation.api.schemas.healthcheck import Healthcheck
 from tests.schemas.e2e.api.healthcheck import HealthcheckEntity
 from tests.schemas.e2e.api.healthcheck import HealthcheckExpected
 
 
-@pytest.mark.anyio()
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [

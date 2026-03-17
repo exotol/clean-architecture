@@ -1,24 +1,23 @@
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
 
-from app.infrastructure.observability.strategies.logging import StandardLoggingStrategy
-from tests.schemas.unit.infrastructure.observability.strategies.logging import (
-    LogErrorEntity,
-    LogErrorExpected,
-    LogStartEntity,
-    LogStartExpected,
-    LogSuccessEntity,
-    LogSuccessExpected,
+from app.infrastructure.observability.strategies.logging import (
+    StandardLoggingStrategy,
+)
+from tests.schemas.unit.infrastructure.observability.strategies import (
+    logging as schemas,
 )
 
 
 @pytest.fixture
-def mock_logger():
+def mock_logger() -> MagicMock:
     # Patch the logger in the module
     with patch(
-        "app.infrastructure.observability.strategies.logging.logger"
+        "app.infrastructure.observability.strategies.logging.logger",
     ) as mock:
         yield mock
 
@@ -34,14 +33,14 @@ def mock_serializer() -> MagicMock:
     ("entity", "expected"),
     [
         pytest.param(
-            LogStartEntity(
+            schemas.LogStartEntity(
                 event_name="TEST_EVENT",
                 args=("arg1",),
                 kwargs={"key": "value"},
                 use_log_args=True,
             ),
-            LogStartExpected(
-                bind_called=True, # In new strat, this means extra context is built
+            schemas.LogStartExpected(
+                bind_called=True,  # Extra context is built.
                 args_in_bind=True,
                 kwargs_in_bind=True,
                 event_in_bind="TEST_EVENT",
@@ -50,13 +49,13 @@ def mock_serializer() -> MagicMock:
             id="log_start_with_args",
         ),
         pytest.param(
-            LogStartEntity(
+            schemas.LogStartEntity(
                 event_name="TEST_EVENT",
                 args=("arg1",),
                 kwargs={"key": "value"},
                 use_log_args=False,
             ),
-            LogStartExpected(
+            schemas.LogStartExpected(
                 bind_called=True,
                 args_in_bind=False,
                 kwargs_in_bind=False,
@@ -70,8 +69,8 @@ def mock_serializer() -> MagicMock:
 def test_log_start(
     mock_logger: MagicMock,
     mock_serializer: MagicMock,
-    entity: LogStartEntity,
-    expected: LogStartExpected,
+    entity: schemas.LogStartEntity,
+    expected: schemas.LogStartExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
 
@@ -85,31 +84,34 @@ def test_log_start(
     # Verify return value IS the context dict
     assert isinstance(context, dict)
     assert context["event"] == entity.event_name
-    
+
     if expected.args_in_bind:
         assert "args" in context
     else:
         assert "args" not in context
-        
+
     if expected.kwargs_in_bind:
         assert "kwargs" in context
     else:
         assert "kwargs" not in context
 
     # Verify logger called with extra=context
-    mock_logger.info.assert_called_with(expected.info_called_with, extra=context)
+    mock_logger.info.assert_called_with(
+        expected.info_called_with,
+        extra=context,
+    )
 
 
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
         pytest.param(
-            LogSuccessEntity(
+            schemas.LogSuccessEntity(
                 event_name="TEST_EVENT",
                 result={"data": "test"},
                 use_log_result=True,
             ),
-            LogSuccessExpected(
+            schemas.LogSuccessExpected(
                 bind_called=True,
                 result_in_bind=True,
                 info_called_with="TEST_EVENT_SUCCESS",
@@ -117,12 +119,12 @@ def test_log_start(
             id="log_success_with_result",
         ),
         pytest.param(
-            LogSuccessEntity(
+            schemas.LogSuccessEntity(
                 event_name="TEST_EVENT",
                 result={"data": "test"},
                 use_log_result=False,
             ),
-            LogSuccessExpected(
+            schemas.LogSuccessExpected(
                 bind_called=False,
                 result_in_bind=False,
                 info_called_with="TEST_EVENT_SUCCESS",
@@ -134,11 +136,11 @@ def test_log_start(
 def test_log_success(
     mock_logger: MagicMock,
     mock_serializer: MagicMock,
-    entity: LogSuccessEntity,
-    expected: LogSuccessExpected,
+    entity: schemas.LogSuccessEntity,
+    expected: schemas.LogSuccessExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
-    
+
     # Simulate context passed from log_start
     context = {"event": entity.event_name}
 
@@ -149,29 +151,29 @@ def test_log_success(
         use_log_result=entity.use_log_result,
     )
 
-    # We expect logger.info to be called with extra=new_context
-    # Check if we modified context in place or created new one?
-    # Implementation created new context if adding result? No, it used passed context.
-    # Actually implementation checked if context is dict.
-    
+    # We expect logger.info to be called with extra=context.
+
     if expected.result_in_bind:
         assert "result" in context
     else:
         # If we didn't add result, maybe it's not in context
         assert "result" not in context
 
-    mock_logger.info.assert_called_with(expected.info_called_with, extra=context)
+    mock_logger.info.assert_called_with(
+        expected.info_called_with,
+        extra=context,
+    )
 
 
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
         pytest.param(
-            LogErrorEntity(
+            schemas.LogErrorEntity(
                 event_name="TEST_EVENT",
                 exc=ValueError("test error"),
             ),
-            LogErrorExpected(
+            schemas.LogErrorExpected(
                 exception_called_with="TEST_EVENT_ERROR",
             ),
             id="log_error",
@@ -181,8 +183,8 @@ def test_log_success(
 def test_log_error(
     mock_logger: MagicMock,
     mock_serializer: MagicMock,
-    entity: LogErrorEntity,
-    expected: LogErrorExpected,
+    entity: schemas.LogErrorEntity,
+    expected: schemas.LogErrorExpected,
 ) -> None:
     strategy = StandardLoggingStrategy(serializer=mock_serializer)
     context = {"event": entity.event_name}
@@ -190,5 +192,7 @@ def test_log_error(
     strategy.log_error(entity.event_name, entity.exc, context)
 
     mock_logger.error.assert_called_with(
-        expected.exception_called_with, exc_info=entity.exc, extra=context
+        expected.exception_called_with,
+        exc_info=entity.exc,
+        extra=context,
     )

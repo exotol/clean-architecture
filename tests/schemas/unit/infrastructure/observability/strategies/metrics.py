@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
+
 
 @dataclass
 class RecordRequestEntity:
@@ -7,6 +10,7 @@ class RecordRequestEntity:
     duration: float
     status: str
     error_type: str | None
+
 
 @dataclass
 class RecordRequestExpected:

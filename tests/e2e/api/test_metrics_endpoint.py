@@ -1,12 +1,19 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
 
 from app.core.constants import METRICS_REQUESTS_TOTAL_NAME
 from tests.schemas.e2e.api.metrics import MetricsEntity
 from tests.schemas.e2e.api.metrics import MetricsExpected
 
 
-@pytest.mark.anyio()
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
@@ -55,7 +62,7 @@ async def test_metrics_endpoint(
         f"but expected status was = {expected.status_code}"
     )
     assert response.headers["content-type"] == expected.content_type, (
-        f"Test failed, actual content-type = {response.headers.get("content-type")}, "
+        f"Test failed, actual content-type = {response.headers.get('content-type')}, "
         f"but expected content-type was = {expected.content_type}"
     )
 

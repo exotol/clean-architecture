@@ -1,21 +1,24 @@
+from __future__ import annotations
+
 import json
 from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from fastapi import Request
 from fastapi import status
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
+import pytest
 
 from app.core.exceptions import BusinessError
-from app.core.exceptions import InfrastructureError
 from app.core.exceptions import Reasons
 from app.presentation.api import exception_handlers
-from tests.schemas.unit.presentation.exception_handlers import ExceptionHandlerEntity
-from tests.schemas.unit.presentation.exception_handlers import ExceptionHandlerExpected
-
+from tests.schemas.unit.presentation.exception_handlers import (
+    ExceptionHandlerEntity,
+)
+from tests.schemas.unit.presentation.exception_handlers import (
+    ExceptionHandlerExpected,
+)
 
 
 def create_error(cls: type[Exception], **kwargs: Any) -> Exception:
@@ -85,7 +88,13 @@ def create_error(cls: type[Exception], **kwargs: Any) -> Exception:
             ExceptionHandlerEntity(
                 handler_name="request_validation_handler",
                 exception=RequestValidationError(
-                    [{"loc": ("body", "field"), "msg": "field required", "type": "value_error.missing"}]
+                    [
+                        {
+                            "loc": ("body", "field"),
+                            "msg": "field required",
+                            "type": "value_error.missing",
+                        },
+                    ],
                 ),
             ),
             ExceptionHandlerExpected(
@@ -106,31 +115,34 @@ def test_exception_handlers(
     # Arrange
     mock_request = MagicMock(spec=Request)
     mock_request.url.path = entity.request_url
-    
+
     # Configure state to return a string for trace_id
     # TRACE_ID is "X-Request-ID", so we must use setattr because it has hyphens
     from app.core.constants import TRACE_ID
+
     mock_request.state = MagicMock()
     setattr(mock_request.state, TRACE_ID, "test-trace-id")
-    
+
     mock_request.headers.get.return_value = None
 
     handler_func = getattr(exception_handlers, entity.handler_name)
 
-    with patch("app.presentation.api.exception_handlers.logger") as mock_logger:
+    with patch(
+        "app.presentation.api.exception_handlers.logger",
+    ) as mock_logger:
         # Act
         response = handler_func(mock_request, entity.exception)
 
         # Assert
         assert response.status_code == expected.status_code
-        
+
         content = json.loads(response.body)
         # Check type (aliased to 'type') or urn_type_error
         type_field = content.get("type", content.get("urn_type_error"))
         assert type_field == expected.content_type_error
         assert content["title"] == expected.content_title
         assert content["reason"] == expected.content_reason
-        
+
         if expected.log_level == "WARNING":
             mock_logger.warning.assert_called_once()
         elif expected.log_level == "ERROR":

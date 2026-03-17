@@ -1,5 +1,5 @@
-import io
-from pathlib import Path
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -33,12 +33,14 @@ async def test_profiling_middleware_disabled(
     # Arrange
     config = ProfilingConfig(enabled=False)
     middleware = ProfilingMiddleware(mock_app, config)
-    
+
     mock_request = MagicMock(spec=Request)
     mock_call_next = MagicMock()
     mock_response = Response()
+
     async def call_next(req):
         return mock_response
+
     mock_call_next.side_effect = call_next
 
     # Act
@@ -60,25 +62,31 @@ async def test_profiling_middleware_enabled(
 ) -> None:
     # Arrange
     middleware = ProfilingMiddleware(mock_app, profiling_config)
-    
+
     mock_request = MagicMock(spec=Request)
     mock_request.method = "GET"
     mock_request.url.path = "/test"
-    
-    mock_call_next = MagicMock()
+
+    MagicMock()
     mock_response = Response()
+
     async def call_next(req):
         return mock_response
-    
+
     # Act
-    with patch("cProfile.Profile") as mock_profile_cls, \
-         patch("pstats.Stats") as mock_stats_cls, \
-         patch("app.infrastructure.observability.profiling.Path") as mock_path, \
-         patch("app.infrastructure.observability.profiling.datetime") as mock_datetime:
-        
+    with (
+        patch("cProfile.Profile") as mock_profile_cls,
+        patch("pstats.Stats") as mock_stats_cls,
+        patch("app.infrastructure.observability.profiling.Path"),
+        patch(
+            "app.infrastructure.observability.profiling.datetime",
+        ) as mock_datetime,
+    ):
         mock_profiler = mock_profile_cls.return_value
-        mock_datetime.now.return_value.strftime.return_value = "20230101_000000"
-        
+        mock_datetime.now.return_value.strftime.return_value = (
+            "20230101_000000"
+        )
+
         response = await middleware.dispatch(mock_request, call_next)
 
     # Assert
@@ -95,8 +103,10 @@ def test_ensure_output_dir(
 ) -> None:
     # Arrange
     with patch("app.infrastructure.observability.profiling.Path") as mock_path:
-        middleware = ProfilingMiddleware(mock_app, profiling_config)
-        
+        ProfilingMiddleware(mock_app, profiling_config)
+
         # Act is in init
         mock_path.assert_called_with(profiling_config.output_dir)
-        mock_path.return_value.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_path.return_value.mkdir.assert_called_once_with(
+            parents=True, exist_ok=True,
+        )

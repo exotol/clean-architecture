@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from app.domain.entities.document import Document
@@ -12,12 +14,12 @@ from tests.schemas.integration.infrastructure.search_repository import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def repository() -> SearchRepository:
     return SearchRepository()
 
 
-@pytest.mark.anyio()
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("entity", "expected"),
     [
@@ -42,7 +44,9 @@ def repository() -> SearchRepository:
         pytest.param(
             SearchRepoEntity(query=""),
             SearchRepoExpected(
-                count=1, text_part="Result for ", metadata={"source": "mock"}
+                count=1,
+                text_part="Result for ",
+                metadata={"source": "mock"},
             ),
             id="search_empty",
         ),

@@ -1,12 +1,16 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from app.utils.configs import LoggerConfig
-from app.utils.configs import OTLPConfig
+
+if TYPE_CHECKING:
+    from app.utils.configs import LoggerConfig
+    from app.utils.configs import OTLPConfig
 
 
 class LoggingEntity(BaseModel):
