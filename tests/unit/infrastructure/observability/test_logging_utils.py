@@ -226,6 +226,28 @@ def logging_mocks(
             ),
             id="success_file_logger_with_local_otlp",
         ),
+        pytest.param(
+            LoggingEntity(
+                logger_config=LoggerConfig(
+                    level=LogLevel.INFO,
+                    format="%(message)s",
+                    path=None,
+                    rotation="10 MB",
+                    retention="10 days",
+                    loggers_to_root=[],
+                    log_format="text",
+                    mute_loggers=["httpx", "httpcore"],
+                ),
+                otlp_config=OTLPConfig(
+                    enabled=False,
+                    endpoint="",
+                    service_name="test",
+                    insecure=False,
+                ),
+            ),
+            LoggingExpected(),
+            id="success_text_format_with_muted_loggers",
+        ),
     ],
 )
 def test_setup_logging(

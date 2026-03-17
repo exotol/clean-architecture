@@ -25,6 +25,10 @@ LOGGING.LOGGERS_TO_ROOT = [
     "granian.access",
     "granian-worker",
 ]
+# "json" for production; "text" for local dev (colored console)
+LOGGING.LOG_FORMAT = "json"
+# Logger names to mute (e.g. noisy third-party)
+LOGGING.MUTE_LOGGERS = []
 
 METRICS.SERVICE_NAME = 'eva'
 # Define custom buckets for request duration (in seconds)

@@ -60,6 +60,8 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         rotation=config.LOGGING.ROTATION,
         retention=config.LOGGING.RETENTION,
         loggers_to_root=config.LOGGING.LOGGERS_TO_ROOT,
+        log_format=config.LOGGING.LOG_FORMAT,
+        mute_loggers=config.LOGGING.MUTE_LOGGERS,
     )
 
     metrics_config = providers.Singleton(

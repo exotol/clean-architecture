@@ -35,20 +35,22 @@ SECTION.KEY = value
 
 ### LOGGING — Логирование
 
-**Потребитель:** `src/app/infrastructure/observability/logging.py` → Loguru
+**Потребитель:** `src/app/infrastructure/observability/logging.py` → structlog + stdlib
 
 | Ключ | Тип | Default | Описание |
 |------|-----|---------|----------|
 | `LEVEL` | str | "INFO" | Минимальный уровень логов |
-| `FORMAT` | str | (см. ниже) | Формат вывода |
+| `FORMAT` | str | (см. ниже) | Формат вывода (legacy, для совместимости) |
 | `PATH` | str | "@none" | Путь к файлу (`@none` = только stdout) |
 | `ROTATION` | str | "10 MB" | Ротация файлов |
 | `RETENTION` | str | "10 days" | Хранение архивов |
-| `LOGGERS_TO_ROOT` | list | [...] | Логгеры для перенаправления |
+| `LOGGERS_TO_ROOT` | list | [...] | Логгеры для перенаправления в общий handler |
+| `LOG_FORMAT` | "json" \| "text" | "json" | `json` — production/парсеры; `text` — локальная разработка (цветной консольный вывод) |
+| `MUTE_LOGGERS` | list[str] | [] | Имена логгеров, которые нужно заглушить (NullHandler), например `["httpx", "httpcore"]` |
 
-**Формат по умолчанию:**
+**Формат по умолчанию (FORMAT):**
 ```toml
-LOGGING.FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level> - <cyan>{extra}</cyan>"
+LOGGING.FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | ..."
 ```
 
 ### METRICS — Prometheus метрики

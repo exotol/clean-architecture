@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 from dynaconf import Dynaconf
 from pydantic import BaseModel
@@ -43,6 +44,10 @@ class LoggerConfig(BaseModel):
     rotation: str
     retention: str
     loggers_to_root: list[str]
+    # "json" for prod; "text" for local dev (ConsoleRenderer colors)
+    log_format: Literal["json", "text"] = "json"
+    # Logger names to mute (NullHandler), e.g. ["httpx", "httpcore"]
+    mute_loggers: list[str] = []
 
 
 class MetricsConfig(BaseModel):
