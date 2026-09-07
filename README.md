@@ -10,6 +10,7 @@
 - ⚡ **High Performance** — Granian ASGI server, orjson serialization
 - 🧪 **Data-Driven Testing** — pytest + Pydantic schemas
 - 📈 **Profiling** — cProfile middleware, snakeviz, speedscope
+- 🛡️ **Resilience** — rate limiting, in-memory cache, circuit breaker и health probes
 
 ## Неприкосновенные правила качества (для всех, включая агентов)
 
@@ -43,6 +44,7 @@ make run.pytest
 | [Профилирование](docs/profiling.md) | Инструменты анализа производительности |
 | [Makefile команды](docs/makefile.md) | Справочник всех команд автоматизации |
 | [Конфигурация](docs/configuration.md) | Описание всех настроек в settings.toml |
+| [Эксплуатация](docs/operations.md) | Health probes, rate limiting, cache и circuit breaker |
 | [Коммиты](docs/commits.md) | Стандарт Conventional Commits |
 
 ## Структура проекта

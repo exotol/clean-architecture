@@ -20,6 +20,7 @@ Comprehensive documentation for the EVA project - a Clean Architecture Python ap
 | [Docker](docker.md) | Docker build, optimizations, and deployment |
 | [Makefile Commands](makefile.md) | All available automation commands |
 | [Configuration](configuration.md) | Settings and environment configuration |
+| [Operations](operations.md) | Health probes, rate limiting, cache and resilience behavior |
 | [Commits](commits.md) | Conventional Commits standard and examples |
 
 ## Quick Start

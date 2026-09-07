@@ -67,6 +67,12 @@ application/
 
 ```
 infrastructure/
+├── cache/                  # In-memory cache adapters
+│   └── memory.py           # TTL + LRU cache backend
+├── health/                 # Health/readiness adapters
+│   └── readiness.py        # Default readiness checker
+├── middleware/             # HTTP middleware
+│   └── rate_limit.py       # Sliding-window rate limiter
 ├── observability/         # Observability stack
 │   ├── logging.py         # Настройка loguru
 │   ├── metrics.py         # Настройка Prometheus/OpenTelemetry
@@ -78,7 +84,9 @@ infrastructure/
 ├── persistence/           # Работа с данными
 │   └── repositories/
 │       └── search_repository.py  # SearchRepository implementation
-└── services/              # Внешние сервисы
+├── resilience/             # Защита внешних вызовов
+│   └── circuit_breaker.py  # In-memory circuit breaker
+└── services/               # Внешние сервисы
     └── (external API clients)
 ```
 
@@ -103,6 +111,7 @@ presentation/
     ├── common/            # Общие endpoints (не версионированы)
     │   └── endpoints/
     │       ├── healthcheck.py  # GET /healthcheck
+    │       ├── probes.py      # GET /live и GET /ready
     │       ├── metrics.py      # GET /metrics
     │       └── root.py         # GET /
     ├── schemas/           # Pydantic DTOs
@@ -192,3 +201,4 @@ docker/
 
 - [Тестирование](testing.md) — структура тестов
 - [Профилирование](profiling.md) — анализ производительности
+- [Эксплуатация](operations.md) — служебные endpoints и защитные механизмы

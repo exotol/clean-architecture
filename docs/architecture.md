@@ -16,23 +16,23 @@ graph TB
         API[FastAPI Endpoints]
         Schemas[Pydantic Schemas]
     end
-    
+
     subgraph Application["Application Layer"]
         Services[Application Services]
         UseCases[Use Cases]
     end
-    
+
     subgraph Domain["Domain Layer"]
         Entities[Entities]
         Interfaces[Interfaces/Ports]
     end
-    
+
     subgraph Infrastructure["Infrastructure Layer"]
         Repos[Repositories]
         Observability[Observability]
         External[External Services]
     end
-    
+
     API --> Services
     Services --> Entities
     Services --> Interfaces
@@ -96,8 +96,12 @@ class SearchService:
 
 | Директория | Назначение |
 |------------|------------|
+| `cache/` | In-memory адаптер кэша с TTL и LRU-вытеснением |
+| `health/` | Реализации readiness-проверок |
+| `middleware/` | HTTP middleware, включая rate limiting |
 | `persistence/` | Реализации репозиториев, ORM модели |
 | `observability/` | Логирование, трейсинг, метрики |
+| `resilience/` | Circuit breaker для асинхронных внешних вызовов |
 | `services/` | Клиенты внешних API |
 
 **Пример репозитория:**
@@ -194,9 +198,9 @@ HTTP Request
 # src/app/core/containers.py
 class InfrastructureContainer(containers.DeclarativeContainer):
     config = providers.Configuration()
-    
+
     search_repository = providers.Singleton(SearchRepository)
-    
+
     search_service = providers.Singleton(
         SearchService,
         repository=search_repository,
@@ -265,10 +269,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
 
 ### Два типичных варианта
 
-1. **Плагин как реализация существующего порта**  
+1. **Плагин как реализация существующего порта**
    Есть интерфейс `ISearchRepository`. Встроенный `SearchRepository` и сторонний пакет `eva-plugin-opensearch` оба его реализуют. Discovery (Infrastructure) по конфигу или entry point выбирает класс, контейнер создаёт один экземпляр и отдаёт его в `SearchService`. Use case и endpoint не меняются; меняется только то, какой класс подставлен в DI.
 
-2. **Плагин как отдельный use case с собственным API**  
+2. **Плагин как отдельный use case с собственным API**
    В Domain появляется контракт вида «плагин даёт имя, описание и обработчик» (и опционально роутер). Discovery возвращает список таких плагинов. При старте приложения (в `app_factory` или в контейнере) для каждого плагина создаётся экземпляр и к роутеру подключаются его маршруты (например `prefix="/v1/plugins/{plugin_id}"`). Один общий endpoint типа `POST /v1/plugins/{plugin_id}/invoke` тоже возможен — тогда маршруты не от плагинов, а диспетчеризация по `plugin_id` внутри одного handler’а.
 
 ### Принципы

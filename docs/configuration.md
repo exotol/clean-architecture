@@ -131,6 +131,61 @@ TRACING.OTLP.ENDPOINT = "http://jaeger:4317"
 
 > **⚠️ Production:** `ENABLED = false` — профилирование добавляет overhead!
 
+### RATE_LIMIT — Ограничение частоты запросов
+
+**Потребитель:** `src/app/infrastructure/middleware/rate_limit.py` → `RateLimitMiddleware`
+
+Ограничение работает в памяти каждого процесса по скользящему окну. Ключом служит значение заголовка `KEY_HEADER`, если он задан и присутствует в запросе; иначе используется IP клиента.
+
+| Ключ | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `ENABLED` | bool | false | Включить middleware |
+| `REQUESTS_PER_WINDOW` | int | 100 | Максимум запросов за окно |
+| `WINDOW_SECONDS` | float | 60.0 | Размер окна в секундах |
+| `KEY_HEADER` | str | "" | Заголовок для группировки клиентов; пустое значение — IP |
+
+При превышении лимита сервис возвращает `429 Too Many Requests`, тело в формате RFC 7807 и заголовок `Retry-After`.
+
+> **Production:** при нескольких воркерах лимит считается отдельно в каждом процессе. Для общего лимита между репликами нужен внешний shared store.
+
+### CACHE — In-memory cache
+
+**Потребитель:** `src/app/infrastructure/cache/memory.py` → `InMemoryCacheBackend`
+
+| Ключ | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `ENABLED` | bool | false | Флаг включения кэша в интеграциях |
+| `TTL_SECONDS` | int | 300 | TTL записи по умолчанию |
+| `MAX_SIZE` | int | 10000 | Максимальное число записей |
+
+Кэш хранится в памяти процесса, удаляет просроченные записи при чтении и использует LRU-вытеснение при переполнении. Значение TTL, переданное в `set`, имеет приоритет над настройкой по умолчанию.
+
+> Кэш не является общим между воркерами и не переживает перезапуск процесса.
+
+### CIRCUIT_BREAKER — Защита внешних вызовов
+
+**Потребитель:** `src/app/infrastructure/resilience/circuit_breaker.py` → `CircuitBreaker`
+
+| Ключ | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `ENABLED` | bool | false | Включить circuit breaker |
+| `FAILURE_THRESHOLD` | int | 5 | Число ошибок до открытия цепи |
+| `RECOVERY_TIMEOUT_SECONDS` | float | 30.0 | Пауза перед переходом в half-open |
+
+Компонент оборачивает асинхронные вызовы. В состоянии `open` новые вызовы завершаются `RuntimeError`; после timeout выполняется пробный вызов. Успешный вызов в `half-open` возвращает цепь в `closed`. Состояние хранится в экземпляре, который регистрируется через DI.
+
+### HTTP_CLIENT — HTTP-клиенты
+
+**Потребитель:** конфигурация транспорта HTTP-клиентов (`httpx`)
+
+| Ключ | Тип | Default | Описание |
+|------|-----|---------|----------|
+| `BASE_URL` | str | "http://localhost" | Базовый URL внешнего сервиса |
+| `TIMEOUT_SECONDS` | float | 30.0 | Общий таймаут запроса |
+| `MAX_CONNECTIONS` | int | 100 | Максимальное число соединений |
+| `MAX_KEEPALIVE_CONNECTIONS` | int | 20 | Максимум keep-alive соединений |
+| `KEEPALIVE_EXPIRY_SECONDS` | float | 5.0 | Время жизни keep-alive соединения |
+
 ## Environments
 
 Dynaconf поддерживает разные окружения. Добавьте секции:
