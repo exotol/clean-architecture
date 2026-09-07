@@ -12,3 +12,10 @@ artifacts/
 *.prof
 .coverage
 coverage.xml
+
+# Devenv
+.devenv*
+devenv.*
+
+# direnv
+.direnv

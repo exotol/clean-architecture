@@ -38,6 +38,24 @@ class Violation:
         )
 
 
+@dataclass(frozen=True)
+class CodeViolation:
+    """Represents a general code or test standard violation."""
+
+    file_path: str
+    line: int
+    col: int
+    code: str
+    message: str
+
+    def format(self) -> str:
+        """Format violation in standard compiler/linter error style."""
+        return (
+            f"{self.file_path}:{self.line}:{self.col}: "
+            f"[{self.code}] {self.message}"
+        )
+
+
 def _is_test_path(path: Path) -> bool:
     """Check whether a path points to test directory or test file."""
     parts = set(path.parts)

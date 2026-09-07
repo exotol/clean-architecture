@@ -35,6 +35,21 @@ repos:
         files: ^src/
         types: [python]
 
+      - id: check-code-cleanliness
+        name: check no suppressions and no nested functions
+        entry: uv run python -m scripts.check_code_cleanliness
+        language: system
+        pass_filenames: true
+        types: [python]
+
+      - id: check-test-standards
+        name: check test writing standards
+        entry: uv run python -m scripts.check_test_standards
+        language: system
+        pass_filenames: true
+        files: ^tests/
+        types: [python]
+
       - id: mypy
         name: mypy
         entry: uv run mypy
