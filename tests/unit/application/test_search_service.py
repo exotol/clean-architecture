@@ -109,3 +109,9 @@ async def test_search_error(
     # Act
     with pytest.raises(expected.expected_exception):
         await search_service.search(query=entity.query)
+
+    # Assert
+    assert mock_repository.search.call_count == 1, (
+        f"Expected repository search called once, "
+        f"got {mock_repository.search.call_count}"
+    )

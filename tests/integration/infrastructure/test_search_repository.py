@@ -57,6 +57,8 @@ async def test_search_repository_returns_mock_data(
     entity: SearchRepoEntity,
     expected: SearchRepoExpected,
 ) -> None:
+    # Arrange
+
     # Act
     actual_results = await repository.search(query=entity.query)
 

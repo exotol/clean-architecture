@@ -54,15 +54,58 @@ def test_get_bound_arguments_resolves_positional_and_keyword() -> None:
     assert out == {"a": 1, "b": 2}, f"Expected {{'a': 1, 'b': 2}}, got {out}"
 
 
-def test_get_bound_arguments_excludes_self() -> None:
-    # Arrange: use unbound function with explicit "self" param
-    def method(self: object, x: int) -> int:
-        # Reference `self` so linters don't treat it as unused; return value
-        # doesn't matter for this test because the function isn't executed.
-        return x + hash(self) * 0
+def _sample_method_with_self(self: object, x: int) -> int:
+    """Reference self so linters do not treat it as unused."""
+    return x + hash(self) * 0
 
-    # Act: bind (instance, 3) -> bound.arguments has self and x; we drop self
-    out = get_bound_arguments(method, (object(), 3), {})
+
+@monitor(event_name="test_sync")
+def _sample_sync_func(a: int, b: int) -> int:
+    return a + b
+
+
+@monitor(event_name=Events.SEARCH_SERVICE, reraise=True)
+def _sample_sync_business_fail() -> None:
+    err = BusinessError("Fail message")
+    err.title = "fail"
+    err.code = "FAIL"
+    raise err
+
+
+@monitor(event_name="infra_test")
+def _sample_sync_infra_fail() -> None:
+    raise InfrastructureError("db fail")
+
+
+@monitor(event_name="suppress", reraise=False)
+def _sample_sync_suppress_fail() -> None:
+    raise ValueError("boom")
+
+
+def _sample_runtime_error_func() -> None:
+    raise RuntimeError("Original error")
+
+
+@monitor(event_name="async_test")
+async def _sample_async_func(x: int) -> int:
+    return x * 2
+
+
+@monitor(event_name="async_error")
+async def _sample_async_error_fail() -> None:
+    raise ValueError("async boom")
+
+
+@monitor(event_name="async_suppress", reraise=False)
+async def _sample_async_suppress_fail() -> None:
+    raise RuntimeError("suppressed")
+
+
+def test_get_bound_arguments_excludes_self() -> None:
+    # Arrange
+
+    # Act
+    out = get_bound_arguments(_sample_method_with_self, (object(), 3), {})
 
     # Assert
     assert "self" not in out, f"Expected no 'self' in result, got {out}"
@@ -86,12 +129,9 @@ def test_monitor_sync_success(
     mock_tracing_strategy: MagicMock,
 ) -> None:
     # Arrange
-    @monitor(event_name="test_sync")
-    def sync_func(a: int, b: int) -> int:
-        return a + b
 
     # Act
-    result = sync_func(1, 2)
+    result = _sample_sync_func(1, 2)
 
     # Assert
     assert result == 3, f"Expected sync_func(1, 2) = 3, got {result}"
@@ -115,16 +155,10 @@ def test_monitor_sync_success(
 
 def test_monitor_sync_error(di_container: AppContainer) -> None:
     # Arrange
-    @monitor(event_name=Events.SEARCH_SERVICE, reraise=True)
-    def sync_fail() -> None:
-        err = BusinessError("Fail message")
-        err.title = "fail"
-        err.code = "FAIL"
-        raise err
 
     # Act
     with pytest.raises(BusinessError):
-        sync_fail()
+        _sample_sync_business_fail()
 
     # Assert
     logging_strategy = di_container.infra_container.logging_strategy()
@@ -145,13 +179,10 @@ def test_monitor_sync_error(di_container: AppContainer) -> None:
 
 def test_monitor_sync_error_infrastructure(di_container: AppContainer) -> None:
     # Arrange
-    @monitor(event_name="infra_test")
-    def sync_fail() -> None:
-        raise InfrastructureError("db fail")
 
     # Act
     with pytest.raises(InfrastructureError):
-        sync_fail()
+        _sample_sync_infra_fail()
 
     # Assert
     metrics_strategy = di_container.infra_container.metrics_strategy()
@@ -164,12 +195,9 @@ def test_monitor_sync_error_infrastructure(di_container: AppContainer) -> None:
 
 def test_monitor_sync_suppress_exception() -> None:
     # Arrange
-    @monitor(event_name="suppress", reraise=False)
-    def sync_fail() -> None:
-        raise ValueError("boom")
 
     # Act
-    result = sync_fail()
+    result = _sample_sync_suppress_fail()
 
     # Assert
     assert result is None, f"Expected None when reraise=False, got {result!r}"
@@ -178,17 +206,14 @@ def test_monitor_sync_suppress_exception() -> None:
 def test_monitor_callback_error(di_container: AppContainer) -> None:
     # Arrange
     callback = MagicMock(side_effect=ValueError("Callback failed"))
-
-    @monitor(
+    decorated = monitor(
         Events.SEARCH_SERVICE,
         action_when_exception=callback,
         reraise=False,
-    )
-    def func() -> None:
-        raise RuntimeError("Original error")
+    )(_sample_runtime_error_func)
 
     # Act
-    func()
+    decorated()
 
     # Assert
     assert callback.call_count == 1, (
@@ -202,12 +227,9 @@ def test_monitor_callback_error(di_container: AppContainer) -> None:
 @pytest.mark.asyncio
 async def test_monitor_async_success(di_container: AppContainer) -> None:
     # Arrange
-    @monitor(event_name="async_test")
-    async def async_func(x: int) -> int:
-        return x * 2
 
     # Act
-    result = await async_func(5)
+    result = await _sample_async_func(5)
 
     # Assert
     assert result == 10, f"Expected async_func(5) = 10, got {result}"
@@ -225,13 +247,10 @@ async def test_monitor_async_success(di_container: AppContainer) -> None:
 @pytest.mark.asyncio
 async def test_monitor_async_error(di_container: AppContainer) -> None:
     # Arrange
-    @monitor(event_name="async_error")
-    async def async_fail() -> None:
-        raise ValueError("async boom")
 
     # Act
     with pytest.raises(ValueError, match="async boom"):
-        await async_fail()
+        await _sample_async_error_fail()
 
     # Assert
     metrics_strategy = di_container.infra_container.metrics_strategy()
@@ -247,12 +266,9 @@ async def test_monitor_async_error(di_container: AppContainer) -> None:
 @pytest.mark.asyncio
 async def test_monitor_async_suppress_returns_none() -> None:
     # Arrange
-    @monitor(event_name="async_suppress", reraise=False)
-    async def async_fail() -> None:
-        raise RuntimeError("suppressed")
 
     # Act
-    result = await async_fail()
+    result = await _sample_async_suppress_fail()
 
     # Assert
     assert result is None, f"Expected None when reraise=False, got {result!r}"

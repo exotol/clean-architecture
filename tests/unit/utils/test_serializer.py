@@ -102,6 +102,8 @@ def test_serialize_basic(
     entity: SerializerEntity,
     expected: SerializerExpected,
 ) -> None:
+    # Arrange
+
     # Act
     result = serializer.serialize(entity.obj)
 
@@ -223,8 +225,10 @@ def test_fallback_when_orjson_disabled(
 
 
 def test_stats_tracking(serializer: ItemSerializer) -> None:
-    # Arrange & Act
+    # Arrange
     serializer.reset_stats()
+
+    # Act
     serializer.serialize({"key": "value"})
     stats = serializer.get_stats()
 
@@ -235,8 +239,10 @@ def test_stats_tracking(serializer: ItemSerializer) -> None:
 
 
 def test_reset_stats(serializer: ItemSerializer) -> None:
-    # Arrange & Act
+    # Arrange
     serializer.serialize({"key": "value"})
+
+    # Act
     serializer.reset_stats()
     stats = serializer.get_stats()
 
@@ -352,8 +358,10 @@ def test_max_objects_limit(serializer: ItemSerializer) -> None:
 
 
 def test_adv_orjson_response_render() -> None:
-    # Arrange & Act
+    # Arrange
     resp = AdvORJSONResponse({"foo": "bar"})
+
+    # Act
     content = resp.render({"foo": "bar"})
 
     # Assert
@@ -369,12 +377,15 @@ def test_adv_orjson_response_render() -> None:
 
 
 def test_serialize_exception_handling(serializer: ItemSerializer) -> None:
-    # Arrange & Act
+    # Arrange
+    data = {"key": "value"}
+
+    # Act
     with patch(
         "app.utils.serializer.ItemSerializer._serialize_internal",
         side_effect=Exception("Boom"),
     ):
-        result = serializer.serialize({"key": "value"})
+        result = serializer.serialize(data)
         stats = serializer.get_stats()
 
     # Assert
@@ -637,12 +648,15 @@ def test_orjson_default_object_with_dict_only(
 def test_orjson_default_returns_dict_direct() -> None:
     """Direct call: orjson_default returns __dict__ as a dict."""
 
-    # Arrange & Act
+    # Arrange
     class PlainObj:
         def __init__(self) -> None:
             self.k = "v"
 
-    out = ItemSerializer.orjson_default(PlainObj())
+    obj = PlainObj()
+
+    # Act
+    out = ItemSerializer.orjson_default(obj)
 
     # Assert
     assert out == {"k": "v"}, f"Expected {{'k': 'v'}}, got {out!r}"
@@ -731,14 +745,17 @@ def test_try_hex_raises_returns_none(serializer: ItemSerializer) -> None:
 def test_orjson_default_falls_back_to_str_for_object_without_dict() -> None:
     """orjson_default falls back to str(obj) without __dict__."""
 
-    # Arrange & Act
+    # Arrange
     class NoDict:
         __slots__ = ()
 
         def __str__(self) -> str:
             return "no-dict"
 
-    out = ItemSerializer.orjson_default(NoDict())
+    obj = NoDict()
+
+    # Act
+    out = ItemSerializer.orjson_default(obj)
 
     # Assert
     assert out == "no-dict", f"Expected 'no-dict', got {out!r}"
@@ -746,8 +763,10 @@ def test_orjson_default_falls_back_to_str_for_object_without_dict() -> None:
 
 def test_serialize_iterative_returns_primitive_directly() -> None:
     """Primitive root values are returned without iterative traversal."""
-    # Arrange & Act
+    # Arrange
     serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
+
+    # Act
     result = serializer.serialize(123)
 
     # Assert
@@ -756,11 +775,13 @@ def test_serialize_iterative_returns_primitive_directly() -> None:
 
 def test_serialize_iterative_deep_nesting_triggers_debug_branch() -> None:
     """Deep nesting branch is executed when depth reaches warn_depth."""
-    # Arrange & Act
+    # Arrange
     serializer = ItemSerializer(
         config=SerializationConfig(use_orjson=False, warn_depth=1),
     )
     nested = {"a": {"b": {"c": 1}}}
+
+    # Act
     result = serializer.serialize(nested)
 
     # Assert
@@ -771,9 +792,12 @@ def test_serialize_iterative_deep_nesting_triggers_debug_branch() -> None:
 
 def test_serialize_iterative_handles_dict_iteration_error() -> None:
     """Errors during iterative traversal use a safe fallback."""
-    # Arrange & Act
+    # Arrange
     serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
-    out = serializer.serialize({"data": {"x": object()}})
+    payload = {"data": {"x": object()}}
+
+    # Act
+    out = serializer.serialize(payload)
 
     # Assert: result may be dict with fallback or str
     assert isinstance(out, (str, dict)), (
@@ -784,13 +808,16 @@ def test_serialize_iterative_handles_dict_iteration_error() -> None:
 def test_serialize_iterative_handles_key_str_failure() -> None:
     """Iterative serializer catches exceptions from str(key) conversion."""
 
-    # Arrange & Act
+    # Arrange
     class BadKey:
         def __str__(self) -> str:
             raise RuntimeError("bad __str__")
 
     serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
-    out = serializer.serialize({BadKey(): "value"})
+    payload = {BadKey(): "value"}
+
+    # Act
+    out = serializer.serialize(payload)
 
     # Assert
     assert isinstance(out, str), f"Expected str fallback, got {type(out)}"
@@ -799,13 +826,16 @@ def test_serialize_iterative_handles_key_str_failure() -> None:
 def test_serialize_primitive_handles_getattr_explosion() -> None:
     """Primitive serialization exceptions are caught; safe string fallback."""
 
-    # Arrange & Act
+    # Arrange
     class Exploding:
         def __getattribute__(self, name: str) -> object:
             raise RuntimeError(f"boom: {name}")
 
     serializer = ItemSerializer(config=SerializationConfig(use_orjson=False))
-    out = serializer.serialize(Exploding())
+    obj = Exploding()
+
+    # Act
+    out = serializer.serialize(obj)
 
     # Assert
     assert isinstance(out, str), f"Expected str fallback, got {type(out)}"
@@ -814,7 +844,10 @@ def test_serialize_primitive_handles_getattr_explosion() -> None:
 
 def test_adv_orjson_response_serialize_exception_fallback() -> None:
     """AdvORJSONResponse uses str(obj) when orjson.dumps raises."""
-    # Arrange & Act
+    # Arrange
+    resp = AdvORJSONResponse(content=None)
+
+    # Act
     with patch(
         "app.utils.serializer.orjson.dumps",
         side_effect=[
@@ -823,7 +856,6 @@ def test_adv_orjson_response_serialize_exception_fallback() -> None:
             b'"extra"',
         ],
     ):
-        resp = AdvORJSONResponse(content=None)
         out = resp.render({"x": 1})
 
     # Assert
@@ -834,9 +866,15 @@ def test_adv_orjson_response_serialize_exception_fallback() -> None:
 
 def test_adv_orjson_response_raises_when_orjson_unavailable() -> None:
     """AdvORJSONResponse.render raises when orjson is None."""
+    # Arrange
     resp = AdvORJSONResponse(content=None)
+
+    # Act
     with (
         patch("app.utils.serializer.orjson", None),
         pytest.raises(RuntimeError, match="orjson must be installed"),
     ):
         resp.render({"x": 1})
+
+    # Assert
+    assert resp is not None, "Expected resp instance to exist"

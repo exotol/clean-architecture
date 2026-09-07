@@ -37,6 +37,8 @@ def test_healthcheck_returns_healthcheck_schema() -> None:
 
 def test_root_returns_hello_world() -> None:
     """root() returns HelloWorld with message."""
+    # Arrange
+
     # Act
     result = root()
 
@@ -48,6 +50,8 @@ def test_root_returns_hello_world() -> None:
 
 def test_get_metrics_returns_response() -> None:
     """get_metrics() returns Response with Prometheus content."""
+    # Arrange
+
     # Act
     result = get_metrics()
 

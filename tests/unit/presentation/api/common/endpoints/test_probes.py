@@ -22,6 +22,8 @@ from tests.schemas.unit.presentation.api.common.probes import (
 
 def test_liveness_returns_ok() -> None:
     """Liveness handler returns status ok."""
+    # Arrange
+
     # Act
     result = liveness()
 

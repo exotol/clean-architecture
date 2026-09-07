@@ -45,6 +45,8 @@ async def test_search_endpoint_success(
     entity: SearchRequest,
     expected: SearchExpected,
 ) -> None:
+    # Arrange
+
     # Act
     response = await client.post(
         "/v1/answer/generate",
@@ -93,6 +95,8 @@ async def test_search_endpoint_invalid_payload(
     entity: InvalidSearchEntity,
     expected: InvalidSearchExpected,
 ) -> None:
+    # Arrange
+
     # Act
     response = await client.post("/v1/answer/generate", json=entity.payload)
 

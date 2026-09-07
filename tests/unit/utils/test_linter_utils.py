@@ -106,22 +106,18 @@ def test_linter_utils_expression_helpers(
     # Arrange
     expr_node = ast.parse(entity.code, mode="eval").body
 
-    # Act & Assert
+    # Act
     if "ClassVar" in entity.code or entity.code == "int":
         result = is_class_var(expr_node)
-        assert result == expected.is_valid, (
-            f"Expected is_class_var={expected.is_valid}, got {result}"
-        )
     elif "KW_ONLY" in entity.code or entity.code == "str":
         result = is_kw_only(expr_node)
-        assert result == expected.is_valid, (
-            f"Expected is_kw_only={expected.is_valid}, got {result}"
-        )
     else:
         result = is_non_empty_str(expr_node)
-        assert result == expected.is_valid, (
-            f"Expected is_non_empty_str={expected.is_valid}, got {result}"
-        )
+
+    # Assert
+    assert result == expected.is_valid, (
+        f"Expected is_valid={expected.is_valid}, got {result}"
+    )
 
 
 def test_parse_docstring_attributes_extraction() -> None:
@@ -160,16 +156,15 @@ def test_has_field_call_description_helpers() -> None:
     invalid_call = ast.parse("Field(default=1)", mode="eval").body
     not_call = ast.parse("42", mode="eval").body
 
-    # Act & Assert
-    assert has_field_call_description(valid_call), (
-        "Expected valid field call to return True"
-    )
-    assert not has_field_call_description(invalid_call), (
-        "Expected call without description to return False"
-    )
-    assert not has_field_call_description(not_call), (
-        "Expected non-call node to return False"
-    )
+    # Act
+    res_valid = has_field_call_description(valid_call)
+    res_invalid = has_field_call_description(invalid_call)
+    res_not_call = has_field_call_description(not_call)
+
+    # Assert
+    assert res_valid, "Expected valid field call to return True"
+    assert not res_invalid, "Expected call without description to return False"
+    assert not res_not_call, "Expected non-call node to return False"
 
 
 def test_has_annotated_description_helpers() -> None:
@@ -184,14 +179,15 @@ def test_has_annotated_description_helpers() -> None:
     ).body
     invalid_annotated = ast.parse("Annotated[int, '']", mode="eval").body
 
-    # Act & Assert
-    assert has_annotated_description(valid_annotated), (
-        "Expected Annotated with Field to return True"
-    )
-    assert has_annotated_description(valid_text_annotated), (
-        "Expected Annotated with text to return True"
-    )
-    assert not has_annotated_description(invalid_annotated), (
+    # Act
+    res_valid = has_annotated_description(valid_annotated)
+    res_text = has_annotated_description(valid_text_annotated)
+    res_invalid = has_annotated_description(invalid_annotated)
+
+    # Assert
+    assert res_valid, "Expected Annotated with Field to return True"
+    assert res_text, "Expected Annotated with text to return True"
+    assert not res_invalid, (
         "Expected Annotated with empty text to return False"
     )
 
@@ -205,16 +201,15 @@ def test_has_dataclass_field_metadata_description_helpers() -> None:
     valid_doc = ast.parse("field(doc='Doc string')", mode="eval").body
     bad_meta = ast.parse("field(metadata={'foo': 'bar'})", mode="eval").body
 
-    # Act & Assert
-    assert has_dataclass_field_metadata_description(valid_meta), (
-        "Expected valid metadata to return True"
-    )
-    assert has_dataclass_field_metadata_description(valid_doc), (
-        "Expected doc argument to return True"
-    )
-    assert not has_dataclass_field_metadata_description(bad_meta), (
-        "Expected metadata without description to return False"
-    )
+    # Act
+    res_valid = has_dataclass_field_metadata_description(valid_meta)
+    res_doc = has_dataclass_field_metadata_description(valid_doc)
+    res_bad = has_dataclass_field_metadata_description(bad_meta)
+
+    # Assert
+    assert res_valid, "Expected valid metadata to return True"
+    assert res_doc, "Expected doc argument to return True"
+    assert not res_bad, "Expected metadata without description to return False"
 
 
 def test_iter_python_files_filtering(tmp_path: Path) -> None:

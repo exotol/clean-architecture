@@ -60,6 +60,8 @@ async def test_search_returns_mock_documents(
     expected: SearchRepoExpected,
 ) -> None:
     """Search returns one mock document; text contains query, metadata mock."""
+    # Arrange
+
     # Act
     results = await repository.search(query=entity.query)
 

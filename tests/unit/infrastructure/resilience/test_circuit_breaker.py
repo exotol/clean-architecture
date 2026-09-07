@@ -77,10 +77,14 @@ async def test_call_failure_increments_and_raises(
     cb = CircuitBreaker(config_enabled, name="test")
     func = AsyncMock(side_effect=ValueError("fail"))
 
-    # Act / Assert
+    # Act
     with pytest.raises(ValueError, match="fail"):
         await cb.call(func)
-    func.assert_called_once()
+
+    # Assert
+    assert func.call_count == 1, (
+        f"Expected func called once, got {func.call_count}"
+    )
 
 
 @pytest.mark.asyncio
@@ -92,12 +96,17 @@ async def test_call_opens_after_threshold(
     cb = CircuitBreaker(config_enabled, name="test")
     func = AsyncMock(side_effect=RuntimeError("err"))
 
-    # Act / Assert
+    # Act
     for _ in range(2):
         with pytest.raises(RuntimeError):
             await cb.call(func)
+
+    # Assert
     with pytest.raises(RuntimeError, match="Circuit breaker 'test' is open"):
         await cb.call(AsyncMock(return_value=1))
+    assert func.call_count == 2, (
+        f"Expected func called twice, got {func.call_count}"
+    )
 
 
 @pytest.mark.asyncio

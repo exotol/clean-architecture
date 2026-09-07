@@ -29,6 +29,8 @@ async def test_healthcheck_endpoint(
     entity: HealthcheckEntity,
     expected: HealthcheckExpected,
 ) -> None:
+    # Arrange
+
     # Act
     response = await client.get(entity.path)
 

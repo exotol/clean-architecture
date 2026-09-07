@@ -33,6 +33,8 @@ async def test_root_endpoint(
     entity: RootEntity,
     expected: RootExpected,
 ) -> None:
+    # Arrange
+
     # Act
     response = await client.get(entity.path)
 

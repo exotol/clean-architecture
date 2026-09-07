@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -74,12 +75,7 @@ async def test_profiling_middleware_dispatch(
     mock_request.method = "GET"
     mock_request.url.path = "/test"
     mock_response = Response()
-
-    async def call_next(_req: Request) -> Response:
-        return mock_response
-
-    mock_call_next = MagicMock()
-    mock_call_next.side_effect = call_next
+    mock_call_next = AsyncMock(return_value=mock_response)
 
     # Act
     if entity.enabled:
@@ -131,8 +127,14 @@ def test_ensure_output_dir(
         ProfilingMiddleware(mock_app, profiling_config)
 
         # Assert
-        mock_path.assert_called_with(profiling_config.output_dir)
-        mock_path.return_value.mkdir.assert_called_once_with(
-            parents=True,
-            exist_ok=True,
+        assert mock_path.call_count == 1, (
+            f"Expected Path called once, got {mock_path.call_count}"
+        )
+        assert mock_path.call_args[0] == (profiling_config.output_dir,), (
+            f"Expected Path called with {profiling_config.output_dir!r}, "
+            f"got {mock_path.call_args[0]!r}"
+        )
+        assert mock_path.return_value.mkdir.call_count == 1, (
+            f"Expected mkdir called once, "
+            f"got {mock_path.return_value.mkdir.call_count}"
         )
