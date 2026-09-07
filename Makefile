@@ -112,9 +112,22 @@ check.settings:
 	@echo "Check: only settings.SECTION.KEY (no .get / getattr)..."
 	uv run python scripts/check_no_settings_dot_get.py
 
+check.basemodel:
+	@echo "Check: all BaseModel fields have description..."
+	uv run python -m scripts.check_basemodel_descriptions
+
+check.dataclass:
+	@echo "Check: all dataclass fields have description..."
+	uv run python -m scripts.check_dataclass_descriptions
+
+check.descriptions:
+	$(MAKE) check.basemodel
+	$(MAKE) check.dataclass
+
 check:
 	@echo "Quality gate: lint + types + unit tests + coverage"
 	$(MAKE) check.settings
+	$(MAKE) check.descriptions
 	$(MAKE) ruff.check
 	$(MAKE) mypy.check
 	$(MAKE) run.unit.cov

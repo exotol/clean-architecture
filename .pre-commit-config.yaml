@@ -19,6 +19,22 @@ repos:
 
   - repo: local
     hooks:
+      - id: check-basemodel-descriptions
+        name: check BaseModel field descriptions
+        entry: uv run python -m scripts.check_basemodel_descriptions
+        language: system
+        pass_filenames: true
+        files: ^src/
+        types: [python]
+
+      - id: check-dataclass-descriptions
+        name: check dataclass field descriptions
+        entry: uv run python -m scripts.check_dataclass_descriptions
+        language: system
+        pass_filenames: true
+        files: ^src/
+        types: [python]
+
       - id: mypy
         name: mypy
         entry: uv run mypy
