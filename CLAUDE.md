@@ -27,6 +27,7 @@ make run.pytest
 - **No secrets in repo**. Use Dynaconf configs and examples only.
 - **Settings access — strict:** only `settings.SECTION.KEY` is allowed. Forbidden: `settings.get(...)`, `getattr(settings.SECTION, "KEY", default)` and any other form. Enforced by `make check.settings` (see AGENTS.md §7).
 - **No nested functions** except decorators. Where work can be done without nested functions, do it strictly at module/class level (see AGENTS.md §6).
+- **Commits — strict:** Conventional Commits strictly in Russian, maximum 20 words total, no huge texts, enforced by hook (see AGENTS.md §9, docs/commits.md).
 
 ## Where to look
 
@@ -35,4 +36,3 @@ make run.pytest
 - Testing: `docs/testing.md`
 - Commits: `docs/commits.md` (Conventional Commits)
 - Tooling: `pyproject.toml`, `Makefile`
-
