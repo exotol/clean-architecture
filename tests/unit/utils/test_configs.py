@@ -24,8 +24,9 @@ def test_load_settings_returns_dynaconf() -> None:
     )
 
 
-def test_get_http_client_config_uses_load_settings_when_settings_none(
-    ) -> None:
+def test_get_http_client_config_uses_load_settings_when_settings_none() -> (
+    None
+):
     # Arrange
     http_client = MagicMock()
     http_client.BASE_URL = "http://from-test"
@@ -58,12 +59,8 @@ def test_get_http_client_config_uses_load_settings_when_settings_none(
         )
         assert config.max_keepalive_connections == (
             http_client.MAX_KEEPALIVE_CONNECTIONS
-        ), (
-            "Expected max_keepalive_connections from load_settings()"
-        )
+        ), "Expected max_keepalive_connections from load_settings()"
         assert (
             config.keepalive_expiry_seconds
             == http_client.KEEPALIVE_EXPIRY_SECONDS
-        ), (
-            "Expected keepalive_expiry_seconds from load_settings()"
-        )
+        ), "Expected keepalive_expiry_seconds from load_settings()"

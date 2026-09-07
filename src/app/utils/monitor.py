@@ -187,11 +187,7 @@ def get_bound_arguments(
         sig = inspect.signature(func)
         bound = sig.bind(*args, **kwargs)
         bound.apply_defaults()
-        return {
-            k: v
-            for k, v in bound.arguments.items()
-            if k != "self"
-        }
+        return {k: v for k, v in bound.arguments.items() if k != "self"}
     except (ValueError, TypeError):
         return {}
 

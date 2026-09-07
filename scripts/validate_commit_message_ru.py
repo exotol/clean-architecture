@@ -5,6 +5,8 @@ import re
 import sys
 
 
+MAX_COMMIT_WORDS = 20
+
 ALLOWED_TYPES = (
     "feat",
     "fix",
@@ -19,28 +21,27 @@ ALLOWED_TYPES = (
     "revert",
 )
 
-
 FIRST_LINE_RE = re.compile(
-    r"^(?P<type>"
-    + "|".join(ALLOWED_TYPES)
-    + r")"
+    r"^(?P<type>" + "|".join(ALLOWED_TYPES) + r")"
     r"(?P<context>\([^)]*\))?"
     r":\s*(?P<desc>.+?)\s*$",
 )
 
 
-def _read_commit_message() -> str:
-    """Read the commit message for commit-msg hooks.
+MIN_PATH_ARGS = 1
+MIN_MESSAGE_ARGS = 2
 
-    pre-commit usually passes a filename; as a fallback we try
-    .git/COMMIT_EDITMSG and then stdin.
-    """
-    if len(sys.argv) > 1:
+
+def read_commit_message() -> str:
+    """Read the commit message from arguments, file or stdin."""
+    if len(sys.argv) > MIN_MESSAGE_ARGS and sys.argv[1] in {"-m", "--message"}:
+        return sys.argv[2]
+
+    if len(sys.argv) > MIN_PATH_ARGS and not sys.argv[1].startswith("-"):
         path = Path(sys.argv[1])
         if path.exists():
             return path.read_text(encoding="utf-8", errors="replace")
 
-    # Fallback for environments where the hook doesn't pass a filename.
     commit_editmsg = Path(".git") / "COMMIT_EDITMSG"
     if commit_editmsg.exists():
         return commit_editmsg.read_text(encoding="utf-8", errors="replace")
@@ -48,67 +49,95 @@ def _read_commit_message() -> str:
     return sys.stdin.read()
 
 
-def _contains_latin_letters(text: str) -> bool:
-    # Latin letters only (A-Z / a-z). We intentionally allow those in prefix
-    # types (feat/fix/...), which we remove before checking.
+def extract_non_comment_words(message: str) -> list[str]:
+    """Extract list of words excluding git comments and empty lines."""
+    words: list[str] = []
+    for line in message.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        words.extend(stripped.split())
+    return words
+
+
+def contains_latin_letters(text: str) -> bool:
+    """Check if text contains latin letters."""
     return bool(re.search(r"[A-Za-z]", text))
 
 
-def _validate_description_is_russian(desc: str) -> None:
-    # Must contain at least one Cyrillic character.
+def validate_word_count(words: list[str]) -> None:
+    """Validate that total words do not exceed maximum limit."""
+    word_count = len(words)
+    if word_count == 0:
+        raise ValueError("Сообщение коммита не может быть пустым.")
+    if word_count > MAX_COMMIT_WORDS:
+        raise ValueError(
+            f"Сообщение коммита содержит {word_count} слов "
+            f"(максимум допускается {MAX_COMMIT_WORDS} слов). "
+            "Огромные тексты запрещены.",
+        )
+
+
+def validate_description_is_russian(desc: str) -> None:
+    """Validate that description contains Cyrillic and no Latin letters."""
     has_cyrillic = bool(re.search(r"[\u0400-\u04FF]", desc))
     if not has_cyrillic:
         raise ValueError("Описание коммита должно содержать русский текст.")
-    if _contains_latin_letters(desc):
+    if contains_latin_letters(desc):
         raise ValueError(
             "Описание коммита должно быть только на русском (без латиницы).",
         )
 
 
-def _validate_body_has_no_latin(message: str) -> None:
-    # Conventional Commits footer may include BREAKING CHANGE: (in english).
-    # We keep the check strict only for lines other than that footer marker.
+def validate_body_has_no_latin(message: str) -> None:
+    """Validate body has no Latin letters except BREAKING CHANGE:."""
     for line in message.splitlines()[1:]:
         stripped = line.strip()
-        if not stripped:
+        if not stripped or stripped.startswith("#"):
             continue
         if stripped.startswith("BREAKING CHANGE:"):
             continue
-        if _contains_latin_letters(stripped):
+        if contains_latin_letters(stripped):
             raise ValueError(
-                "Тело/комментарии коммита должны быть только на русском.",
+                "Тело коммита должно быть только на русском (без латиницы).",
             )
 
 
-def main() -> None:
-    """Validate commit message language for Conventional Commits."""
-    message = _read_commit_message().replace("\r\n", "\n")
-    lines = message.splitlines()
+def validate_commit_message(message: str) -> None:
+    """Strict validation of commit message."""
+    words = extract_non_comment_words(message)
+    validate_word_count(words)
 
-    # pre-commit/commit-msg can still pass empty messages in edge cases.
-    first_non_empty = next(
-        (ln for ln in lines if ln.strip()),
-        "",
-    )
+    lines = [
+        ln.strip()
+        for ln in message.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
+    first_non_empty = lines[0] if lines else ""
+
     m = FIRST_LINE_RE.match(first_non_empty)
     if not m:
-        # Let conventional-commits hook handle formatting; we only enforce
-        # language.
-        # Still, if it can't be parsed, do not block here.
-        return
+        allowed = ", ".join(ALLOWED_TYPES)
+        raise ValueError(
+            "Сообщение коммита должно соответствовать Conventional Commits: "
+            f"<тип>[(контекст)]: <описание>. Допустимые типы: {allowed}.",
+        )
 
     desc = m.group("desc")
-    _validate_description_is_russian(desc)
-    _validate_body_has_no_latin(message)
+    validate_description_is_russian(desc)
+    validate_body_has_no_latin(message)
 
-    # For debugging in CI logs, keep output minimal.
+
+def main() -> None:
+    """Main entrypoint for commit-msg hook."""
+    message = read_commit_message().replace("\r\n", "\n")
+    validate_commit_message(message)
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    # Ensure hook never writes to stdout/stderr on success.
     try:
         main()
-    except ValueError:
-        # Print a short message for the developer.
+    except ValueError as exc:
+        sys.stderr.write(f"ОШИБКА: {exc}\n")
         sys.exit(1)

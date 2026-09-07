@@ -113,7 +113,8 @@ def add_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
     app.add_exception_handler(
-        RequestValidationError, request_validation_handler,
+        RequestValidationError,
+        request_validation_handler,
     )
     app.add_exception_handler(Exception, global_exception_handler)
 
@@ -136,9 +137,8 @@ async def app_lifespan(
         yield
     finally:
         shutdown_result = infra.shutdown_resources()
-        if (
-            shutdown_result is not None
-            and inspect.isawaitable(shutdown_result)
+        if shutdown_result is not None and inspect.isawaitable(
+            shutdown_result,
         ):
             await shutdown_result
         container.unwire()

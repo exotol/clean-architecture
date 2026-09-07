@@ -122,9 +122,15 @@ check:
 install.pre-commit:
 	@echo "Установить сконфигрурированные пре-коммит хуки"
 	uv run pre-commit install
+	uv run pre-commit install --hook-type commit-msg
+
+check.commit:
+	@echo "Проверка сообщения последнего коммита"
+	git log -1 --pretty=%B | uv run python scripts/validate_commit_message_ru.py
 
 remove.pre-commit:
 	@echo "Удалить сконфигрурированные пре-коммит хуки"
+	uv run pre-commit uninstall --hook-type commit-msg
 	uv run pre-commit uninstall
 
 wemake.run:
@@ -227,4 +233,3 @@ docker.size:
 docker.clean:
 	@echo "Удаление Docker образа"
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
-
