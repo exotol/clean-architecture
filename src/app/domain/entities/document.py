@@ -7,7 +7,17 @@ from typing import Any
 
 @dataclass
 class Document:
-    """Domain document entity."""
+    """Domain document entity.
 
-    text: str
-    metadata: dict[str, Any] = field(default_factory=dict)
+    Attributes:
+        text: Текстовое содержимое документа.
+        metadata: Словарь метаданных документа.
+    """
+
+    text: str = field(
+        metadata={"description": "Текстовое содержимое документа"},
+    )
+    metadata: dict[str, Any] = field(
+        default_factory=dict,
+        metadata={"description": "Словарь метаданных документа"},
+    )

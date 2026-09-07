@@ -11,10 +11,10 @@ from app.core.constants import NO_PARAMS
 class Reason(BaseModel):
     """Reason metadata for Problem Details."""
 
-    urn_type_error: str
-    code: str
-    message: str
-    title: str
+    urn_type_error: str = Field(..., description="URN типа ошибки")
+    code: str = Field(..., description="Строковый код ошибки")
+    message: str = Field(..., description="Человекочитаемое сообщение ошибки")
+    title: str = Field(..., description="Краткий заголовок ошибки")
 
 
 class Reasons:

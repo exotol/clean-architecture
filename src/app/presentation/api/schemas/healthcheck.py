@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
+from pydantic import Field
 
 
 class Healthcheck(BaseModel):
@@ -13,10 +14,13 @@ class Healthcheck(BaseModel):
 class Liveness(BaseModel):
     """Liveness probe response (process is running)."""
 
-    status: str = "ok"
+    status: str = Field("ok", description="Статус работоспособности сервиса")
 
 
 class Readiness(BaseModel):
     """Readiness probe response (ready to accept traffic)."""
 
-    status: str = "ok"
+    status: str = Field(
+        "ok",
+        description="Статус готовности сервиса принимать трафик",
+    )

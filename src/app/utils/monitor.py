@@ -37,7 +37,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class _MonitorOptions:
-    """Options for monitor behaviour (reraise, callbacks, logging)."""
+    """Options for monitor behaviour (reraise, callbacks, logging).
+
+    Attributes:
+        reraise: Флаг повторной генерации пойманного исключения.
+        action_when_exception: Функция реакции при возникновении исключения.
+        use_log_args: Фиксация в логе входных аргументов функции.
+        use_log_result: Фиксация в логе результата функции.
+    """
 
     reraise: bool = True
     action_when_exception: Callable[..., Any] | None = None
@@ -47,7 +54,13 @@ class _MonitorOptions:
 
 @dataclass(frozen=True)
 class _MonitorStrategies:
-    """Injected observability strategies for monitor."""
+    """Injected observability strategies for monitor.
+
+    Attributes:
+        logging: Стратегия структурированного логирования.
+        tracing: Стратегия распределенной трассировки.
+        metrics: Стратегия агрегации и экспорта метрик.
+    """
 
     logging: ILoggingStrategy
     tracing: ITracingStrategy

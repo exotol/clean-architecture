@@ -7,14 +7,17 @@ from pydantic import Field
 class SearchRequest(BaseModel):
     """Search request payload."""
 
-    query: str
+    query: str = Field(..., description="Строка поискового запроса")
 
 
 class Document(BaseModel):
     """Document returned by search."""
 
-    text: str
-    metadata: dict[str, str | int | float]
+    text: str = Field(..., description="Текстовое содержимое документа")
+    metadata: dict[str, str | int | float] = Field(
+        ...,
+        description="Словарь метаданных документа",
+    )
 
 
 class SearchResponse(BaseModel):
