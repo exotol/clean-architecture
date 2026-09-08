@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.core.exceptions import InfrastructureError
 from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
 from app.utils.configs import CircuitBreakerConfig
 
@@ -102,7 +103,10 @@ async def test_call_opens_after_threshold(
             await cb.call(func)
 
     # Assert
-    with pytest.raises(RuntimeError, match="Circuit breaker 'test' is open"):
+    with pytest.raises(
+        InfrastructureError,
+        match="Circuit breaker 'test' is open",
+    ):
         await cb.call(AsyncMock(return_value=1))
     assert func.call_count == 2, (
         f"Expected func called twice, got {func.call_count}"

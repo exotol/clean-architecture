@@ -7,6 +7,7 @@ import time
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
+from app.core.exceptions import InfrastructureError
 from app.domain.interfaces.circuit_breaker import ICircuitBreaker
 
 
@@ -62,8 +63,9 @@ class CircuitBreaker(ICircuitBreaker):
                 ):
                     self._state = _State.HALF_OPEN
                 else:
-                    raise RuntimeError(
+                    raise InfrastructureError(
                         f"Circuit breaker '{self._name}' is open",
+                        service_name=self._name,
                     ) from None
 
         try:
