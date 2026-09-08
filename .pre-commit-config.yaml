@@ -50,6 +50,14 @@ repos:
         files: ^tests/
         types: [python]
 
+      - id: check-exception-layers
+        name: check exception usage across layers
+        entry: uv run python -m scripts.check_exception_layers
+        language: system
+        pass_filenames: true
+        files: ^src/app/
+        types: [python]
+
       - id: mypy
         name: mypy
         entry: uv run mypy

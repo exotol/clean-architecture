@@ -132,12 +132,17 @@ check.test.standards:
 	@echo "Check: tests comply with docs/testing.md standard..."
 	uv run python -m scripts.check_test_standards
 
+check.exceptions:
+	@echo "Check: exception usage follows clean architecture layer rules..."
+	uv run python -m scripts.check_exception_layers
+
 check:
 	@echo "Quality gate: lint + types + unit tests + coverage"
 	$(MAKE) check.settings
 	$(MAKE) check.cleanliness
 	$(MAKE) check.descriptions
 	$(MAKE) check.test.standards
+	$(MAKE) check.exceptions
 	$(MAKE) ruff.check
 	$(MAKE) mypy.check
 	$(MAKE) run.unit.cov
