@@ -9,7 +9,7 @@ class SearchRepository(ISearchRepository):
 
     async def search(self, query: str) -> list[Document]:
         """Search documents by query (mock implementation)."""
-        _ = self  # Protocol requires instance method; used for future backend
+        _ = self  # ABC requires instance method; used for future backend
         # Mock implementation
         # In a real scenario, this would call OpenSearch/Elasticsearch
         return [

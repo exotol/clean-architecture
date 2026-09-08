@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Protocol
-from typing import runtime_checkable
+from abc import ABC
+from abc import abstractmethod
 
 
-@runtime_checkable
-class IReadinessChecker(Protocol):
+class IReadinessChecker(ABC):
     """Interface for readiness checks (dependencies available)."""
 
+    @abstractmethod
     async def is_ready(self) -> bool:
         """Return True if the service is ready to accept traffic."""
-        ...

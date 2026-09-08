@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from typing import TYPE_CHECKING
-from typing import Protocol
 from typing import TypeVar
-from typing import runtime_checkable
 
 
 if TYPE_CHECKING:
@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-@runtime_checkable
-class ICircuitBreaker(Protocol):
+class ICircuitBreaker(ABC):
     """Interface for circuit breaker wrapping async calls."""
 
+    @abstractmethod
     async def call(
         self,
         func: Callable[..., Awaitable[T]],
@@ -29,4 +29,3 @@ class ICircuitBreaker(Protocol):
         Raises:
             Exception: When circuit is open or when func raises.
         """
-        ...

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
-from typing import Protocol
-from typing import runtime_checkable
 
 
-@runtime_checkable
-class ILoggingStrategy(Protocol):
+class ILoggingStrategy(ABC):
     """Interface for logging strategy."""
 
+    @abstractmethod
     def log_start(
         self,
         event_name: str,
@@ -23,8 +23,8 @@ class ILoggingStrategy(Protocol):
         If named_args is provided and use_log_args is True, log by param names;
         otherwise use args/kwargs.
         """
-        ...
 
+    @abstractmethod
     def log_success(
         self,
         event_name: str,
@@ -34,30 +34,28 @@ class ILoggingStrategy(Protocol):
         use_log_result: bool,
     ) -> None:
         """Log successful execution."""
-        ...
 
+    @abstractmethod
     def log_error(self, event_name: str, exc: Exception, context: Any) -> None:
         """Log error execution."""
-        ...
 
 
-@runtime_checkable
-class ITracingStrategy(Protocol):
+class ITracingStrategy(ABC):
     """Interface for tracing strategy."""
 
+    @abstractmethod
     def start_span(self, name: str) -> Any:
         """Start a new span."""
-        ...
 
+    @abstractmethod
     def end_span(self, span: Any, exc: Exception | None = None) -> None:
         """End the span."""
-        ...
 
 
-@runtime_checkable
-class IMetricsStrategy(Protocol):
+class IMetricsStrategy(ABC):
     """Interface for metrics strategy."""
 
+    @abstractmethod
     def record_request(
         self,
         event_name: str,
@@ -66,8 +64,8 @@ class IMetricsStrategy(Protocol):
         error_type: str | None = None,
     ) -> None:
         """Record request metrics."""
-        ...
 
+    @abstractmethod
     def record_sla(
         self,
         event_name: str,
@@ -76,4 +74,3 @@ class IMetricsStrategy(Protocol):
         success: bool,
     ) -> None:
         """Record SLA metrics (latency + success/error for error rate)."""
-        ...
