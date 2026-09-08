@@ -55,9 +55,9 @@ class HttpClientResource(resources.AsyncResource[httpx.AsyncClient]):
 
     async def shutdown(
         self,
-        client: httpx.AsyncClient | None,
+        resource: httpx.AsyncClient | None,
     ) -> None:
         """Закрыть клиент при остановке контейнера."""
-        if client is not None:
+        if resource is not None:
             _ = id(self)
-            await client.aclose()
+            await resource.aclose()

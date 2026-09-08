@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app.infrastructure.gateways.http_client import HttpClientResource
 from app.utils.configs import HttpClientConfig
-from app.utils.http_client import HttpClientResource
 
 
 if TYPE_CHECKING:

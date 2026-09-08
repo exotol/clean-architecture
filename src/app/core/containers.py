@@ -7,6 +7,7 @@ from granian.constants import Interfaces
 
 from app.application.services.search_service import SearchService
 from app.infrastructure.cache.memory import InMemoryCacheBackend
+from app.infrastructure.gateways.http_client import HttpClientResource
 from app.infrastructure.health.readiness import DefaultReadinessChecker
 from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.infrastructure.observability.strategies.logging import (
@@ -33,7 +34,6 @@ from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
 from app.utils.configs import SerializationConfig
 from app.utils.configs import ServerConfig
-from app.utils.http_client import HttpClientResource
 from app.utils.serializer import ItemSerializer
 
 
