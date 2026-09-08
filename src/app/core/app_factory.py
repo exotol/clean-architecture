@@ -22,6 +22,7 @@ from app.core.constants import VALIDATION_UUID_OFF
 from app.core.containers import AppContainer
 from app.core.exceptions import BusinessError
 from app.core.exceptions import InfrastructureError
+from app.core.exceptions import RateLimitExceededError
 from app.infrastructure.middleware.rate_limit import RateLimitMiddleware
 from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.infrastructure.observability.logging import setup_logging
@@ -31,6 +32,7 @@ from app.presentation.api.application_api import create_main_router
 from app.presentation.exception_handlers import business_error_handler
 from app.presentation.exception_handlers import global_exception_handler
 from app.presentation.exception_handlers import infra_error_handler
+from app.presentation.exception_handlers import rate_limit_error_handler
 from app.presentation.exception_handlers import request_validation_handler
 from app.utils.configs import ProfilingConfig
 from app.utils.configs import RateLimitConfig
@@ -112,6 +114,10 @@ def add_exception_handlers(app: FastAPI) -> None:
     """Register exception handlers on the FastAPI app."""
     app.add_exception_handler(InfrastructureError, infra_error_handler)
     app.add_exception_handler(BusinessError, business_error_handler)
+    app.add_exception_handler(
+        RateLimitExceededError,
+        rate_limit_error_handler,
+    )
     app.add_exception_handler(
         RequestValidationError,
         request_validation_handler,

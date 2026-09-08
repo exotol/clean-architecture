@@ -110,7 +110,6 @@ def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
     )
 
     # 2. Логируем реальную ошибку (ДЛЯ РАЗРАБОТЧИКА)
-    # exc_info=True запишет полный стек-трейс в логи
     logger.error(
         "Infrastructure error: %s",
         exc,
@@ -119,13 +118,21 @@ def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
     problem = ProblemDetail(
         # Используем алиас 'type' для удобства (если в ConfigDict разрешили)
-        urn_type_error=Reasons.service_unavailable.urn_type_error,
-        title=Reasons.service_unavailable.title,
-        status=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+        urn_type_error=getattr(
+            exc,
+            "urn_type_error",
+            Reasons.service_unavailable.urn_type_error,
+        ),
+        title=getattr(exc, "title", Reasons.service_unavailable.title),
+        status=getattr(
+            exc,
+            "status_code",
+            http_status.HTTP_503_SERVICE_UNAVAILABLE,
+        ),
         # Код для фронтенда, чтобы показать экран "Технические работы"
-        reason=Reasons.service_unavailable.code,
+        reason=getattr(exc, "code", Reasons.service_unavailable.code),
         # ВАЖНО: не пишите str(exc) ("Connection refused 127.0.0.1:5432")
-        detail=Reasons.service_unavailable.message,
+        detail=getattr(exc, "detail", Reasons.service_unavailable.message),
         instance=request.url.path,
         trace_id=trace_id,
         # invalid_params здесь не нужны
@@ -141,54 +148,111 @@ def infra_error_handler(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
-def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Глобальный обработчик.
-
-    Eсли что-то просочилось через декоратор
+def rate_limit_error_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Обработчик превышения лимита запросов.
 
     Args:
         request: Объект входящего запроса.
-        exc: Перехваченное исключение (бизнес-логики).
+        exc: Перехваченное исключение (RateLimitExceededError).
+
+    Returns:
+        JSONResponse с ProblemDetail и заголовком Retry-After.
+    """
+    trace_id = (
+        getattr(request.state, TRACE_ID, None)
+        or request.headers.get(TRACE_ID, None)
+        or str(uuid.uuid4())
+    )
+    retry_after_int = max(1, int(getattr(exc, "retry_after", 60.0)))
+    status_code = getattr(
+        exc,
+        "status_code",
+        http_status.HTTP_429_TOO_MANY_REQUESTS,
+    )
+    detail_msg = getattr(exc, "detail", Reasons.rate_limit_exceeded.message)
+    code = getattr(exc, "code", Reasons.rate_limit_exceeded.code)
+
+    logger.warning(
+        "Rate limit exceeded: %s - %s",
+        code,
+        detail_msg,
+        extra={"trace_id": trace_id},
+    )
+
+    problem = ProblemDetail(
+        urn_type_error=getattr(
+            exc,
+            "urn_type_error",
+            Reasons.rate_limit_exceeded.urn_type_error,
+        ),
+        title=getattr(exc, "title", Reasons.rate_limit_exceeded.title),
+        status=status_code,
+        reason=code,
+        detail=detail_msg,
+        instance=request.url.path,
+        trace_id=trace_id,
+        invalid_params=NO_PARAMS,
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content=problem.model_dump(by_alias=True, exclude_none=True),
+        headers={"Retry-After": str(retry_after_int)},
+    )
+
+
+def global_exception_handler(
+    request: Request,
+    exc: Exception,
+    *,
+    use_exposed_details: bool = False,
+) -> JSONResponse:
+    """Глобальный обработчик для необработанных исключений.
+
+    Args:
+        request: Объект входящего запроса.
+        exc: Перехваченное исключение.
+        use_exposed_details: Флаг для локального дебага (утечка str(exc)).
 
     Returns:
         JSONResponse с сформированной структурой ошибки (ProblemDetail).
     """
-    # Сначала ищем в state (если middleware положил),
-    # потом в хедерах, иначе генерируем новый
     trace_id = (
         getattr(request.state, TRACE_ID, None)
         or request.headers.get(TRACE_ID, None)
         or str(uuid.uuid4())
     )
 
-    # 2. Логируем реальную ошибку (ДЛЯ РАЗРАБОТЧИКА)
-    # exc_info=True запишет полный стек-трейс в логи
+    # 2. Логируем реальную ошибку со стек-трейсом (ДЛЯ РАЗРАБОТЧИКА)
     logger.error(
         "Unhandled exception (0)",
         extra={"trace_id": trace_id, "exc_extra_info": str(exc)},
     )
 
+    app_state = getattr(getattr(request, "app", None), "state", None)
+    is_exposed = use_exposed_details or bool(
+        getattr(app_state, "use_exposed_details", False),
+    )
+    detail_msg = (
+        str(exc) if is_exposed else Reasons.internal_server_error.message
+    )
+
     # 3. Собираем модель ответа (ДЛЯ КЛИЕНТА)
     problem = ProblemDetail(
-        # Используем имя поля класса, Pydantic сам
-        # переименует его в 'type' благодаря alias
         urn_type_error=Reasons.internal_server_error.urn_type_error,
         title=Reasons.internal_server_error.title,
         status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
         reason=Reasons.internal_server_error.code,
-        # ВАЖНО: Не показываем str(exc) пользователю в 500 ошибке!
-        detail=str(exc),  # Reasons.internal_server_error.message,
-        instance=request.url.path,  # URI, где упало
+        detail=detail_msg,
+        instance=request.url.path,
         trace_id=trace_id,
-        invalid_params=NO_PARAMS,  # Для 500 ошибки это поле не актуально
+        invalid_params=NO_PARAMS,
     )
 
-    # Тут можно отправить алерт в Sentry
     return JSONResponse(
         status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-        # model_dump(by_alias=True) нужен, чтобы
-        # urn_type_error превратился в type
-        # exclude_none=True уберет пустые поля (invalid_params)
         content=problem.model_dump(by_alias=True, exclude_none=True),
     )
 
