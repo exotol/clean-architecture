@@ -11,13 +11,23 @@ from app.core.constants import NO_PARAMS
 class Reason(BaseModel):
     """Reason metadata for Problem Details."""
 
+    model_config = ConfigDict(frozen=True)
+
     urn_type_error: str = Field(..., description="URN типа ошибки")
     code: str = Field(..., description="Строковый код ошибки")
     message: str = Field(..., description="Человекочитаемое сообщение ошибки")
     title: str = Field(..., description="Краткий заголовок ошибки")
 
 
-class Reasons:
+class _ReasonsMeta(type):
+    """Metaclass ensuring Reasons cannot be modified at runtime."""
+
+    def __setattr__(cls, name: str, value: object) -> None:
+        msg = f"Cannot modify immutable reason '{name}'"
+        raise TypeError(msg)
+
+
+class Reasons(metaclass=_ReasonsMeta):
     """Common error reasons used across the service."""
 
     internal_server_error = Reason(
@@ -128,24 +138,106 @@ class ProblemDetail(BaseModel):
 class AppError(Exception):
     """Базовый класс для всех ошибок приложения."""
 
+    def __init__(
+        self,
+        *,
+        reason: Reason,
+        status_code: int,
+        detail: str | None = None,
+        invalid_params: list[dict[str, str]] | None = None,
+    ) -> None:
+        """Инициализация базовой ошибки приложения.
+
+        Args:
+            reason: Метаданные причины ошибки (код, заголовок, URN).
+            status_code: Рекомендуемый HTTP статус-код.
+            detail: Подробное описание ошибки (или дефолт из reason).
+            invalid_params: Опциональный список параметров с
+                ошибками валидации.
+        """
+        self.reason = reason
+        self.status_code = status_code
+        self.detail = detail or reason.message
+        self.code = reason.code
+        self.title = reason.title
+        self.urn_type_error = reason.urn_type_error
+        self.invalid_params = invalid_params
+        super().__init__(self.detail)
+
 
 class BusinessError(AppError):
     """Бизнес-ошибки (клиент виноват / нарушены правила)."""
 
-    urn_type_error: str | None = Reasons.business_rule_violation.urn_type_error
-    code: str | None = Reasons.business_rule_violation.code
-    title: str | None = Reasons.business_rule_violation.title
-    detail: str | None = Reasons.business_rule_violation.message
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        reason: Reason = Reasons.business_rule_violation,
+        status_code: int = 400,
+        invalid_params: list[dict[str, str]] | None = None,
+    ) -> None:
+        """Инициализация бизнес-ошибки с дефолтным reason и статусом 400."""
+        super().__init__(
+            reason=reason,
+            status_code=status_code,
+            detail=detail,
+            invalid_params=invalid_params,
+        )
 
 
-# --- Инфраструктурные ошибки (система виновата) ---
 class InfrastructureError(AppError):
-    """Инфраструктурные ошибки.
+    """Инфраструктурные ошибки (система виновата: БД упала, S3 не отвечает)."""
 
-    Cистема виновата: БД упала, S3 не отвечает.
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        reason: Reason = Reasons.service_unavailable,
+        status_code: int = 503,
+        service_name: str | None = None,
+    ) -> None:
+        """Инициализация инфраструктурной ошибки со статусом 503."""
+        self.service_name = service_name
+        super().__init__(
+            reason=reason,
+            status_code=status_code,
+            detail=detail,
+        )
 
-    """
+
+class RateLimitExceededError(AppError):
+    """Превышение лимита запросов (429 Too Many Requests)."""
+
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        retry_after: float = 60.0,
+        reason: Reason = Reasons.rate_limit_exceeded,
+        status_code: int = 429,
+    ) -> None:
+        """Инициализация ошибки превышения лимита запросов."""
+        self.retry_after = retry_after
+        super().__init__(
+            reason=reason,
+            status_code=status_code,
+            detail=detail,
+        )
 
 
-class InnerTechError(Exception):
-    """Raised when serialization fails."""
+class InnerTechError(AppError):
+    """Raised when serialization or internal technical operation fails."""
+
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        reason: Reason = Reasons.internal_server_error,
+        status_code: int = 500,
+    ) -> None:
+        """Инициализация внутренней технической ошибки."""
+        super().__init__(
+            reason=reason,
+            status_code=status_code,
+            detail=detail,
+        )
