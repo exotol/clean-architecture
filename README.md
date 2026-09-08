@@ -31,6 +31,24 @@ python src/app/main.py
 make run.pytest
 ```
 
+### Быстрая проверка работы (curl)
+
+После запуска приложения проверить его работоспособность можно с помощью `curl`:
+
+```bash
+# Проверка доступности (healthcheck)
+curl http://localhost:8000/common/healthcheck
+
+# Проверка Liveness и Readiness проб (Kubernetes)
+curl http://localhost:8000/common/live
+curl http://localhost:8000/common/ready
+
+# Пример поискового запроса (v1 API)
+curl -X POST http://localhost:8000/v1/answer/generate \
+  -H "Content-Type: application/json" \
+  -d '{"query": "архитектура"}'
+```
+
 ## 📚 Документация
 
 Полная документация находится в директории [`docs/`](docs/README.md):
