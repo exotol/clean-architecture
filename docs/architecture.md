@@ -49,7 +49,7 @@ graph TB
 | Директория | Назначение |
 |------------|------------|
 | `entities/` | Бизнес-сущности (dataclasses, Pydantic models) |
-| `interfaces/` | Интерфейсы (Protocol, ABC) для репозиториев и сервисов |
+| `interfaces/` | Интерфейсы (ABC) для репозиториев и сервисов |
 
 **Пример сущности:**
 ```python
@@ -63,9 +63,11 @@ class Document:
 
 **Пример интерфейса:**
 ```python
-from typing import Protocol
+from abc import ABC
+from abc import abstractmethod
 
-class ISearchRepository(Protocol):
+class ISearchRepository(ABC):
+    @abstractmethod
     async def search(self, query: str) -> list[Document]: ...
 ```
 
@@ -221,7 +223,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
 
 ### 1. Domain
 
-- **Интерфейс репозитория** в `src/app/domain/interfaces/` — `Protocol` с нужными методами (например `IXxxRepository`).
+- **Интерфейс репозитория** в `src/app/domain/interfaces/` — `ABC` с нужными методами (например `IXxxRepository`).
 - **Сущности** в `src/app/domain/entities/` — dataclass’ы для доменных объектов, если их ещё нет.
 
 ### 2. Application
@@ -277,7 +279,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
 
 ### Принципы
 
-- **Domain** не импортирует инфраструктуру и не знает про «discovery» или «плагины» — только про интерфейсы (Protocol/ABC).
+- **Domain** не импортирует инфраструктуру и не знает про «discovery» или «плагины» — только про интерфейсы (ABC).
 - **Application** не импортирует конкретные плагины — получает готовые реализации через DI (по интерфейсу или по списку контракта).
 - **Discovery и загрузка** изолированы в Infrastructure (или в отдельном модуле Core): entry points, импорт по строке, конфиг. Ошибки загрузки обрабатываются там же (логирование, пропуск плагина, или падение старта).
 - **Конфигурация** (какие плагины включены, откуда грузить) — через Dynaconf/константы, без размазывания по коду.

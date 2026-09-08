@@ -33,14 +33,14 @@ eva/
 domain/
 ├── entities/              # Бизнес-сущности
 │   └── document.py        # Пример: Document dataclass
-└── interfaces/            # Интерфейсы (Protocol/ABC)
+└── interfaces/            # Интерфейсы (ABC)
     ├── observability.py   # ILoggingStrategy, ITracingStrategy, IMetricsStrategy
     └── search_repository.py # ISearchRepository
 ```
 
 **Что класть сюда:**
 - Dataclasses/Pydantic models, представляющие бизнес-объекты
-- Протоколы (interfaces) для репозиториев и сервисов
+- Интерфейсы (ABC) для репозиториев и сервисов
 - Value Objects
 - Domain Events
 - Domain Services (если содержат чистую бизнес-логику без зависимостей)
