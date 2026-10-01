@@ -19,3 +19,8 @@ devenv.*
 
 # direnv
 .direnv
+!/README.md
+
+# Материалы для статей
+docs/habr/
+docs/spec-kit-hello-world.md
