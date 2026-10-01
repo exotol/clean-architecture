@@ -132,22 +132,26 @@ async def app_lifespan(
 ) -> AsyncIterator[None]:
     """ASGI lifespan: init/shutdown resources via DI container."""
     app.state.container = container
-    container.wire(packages=["app"])
-    _ensure_observability()
-    infra = container.infra_container()
-    init_result = infra.init_resources()
-    if init_result is not None and inspect.isawaitable(init_result):
-        await init_result
+    infra = None
     try:
+        container.wire(packages=["app"])
+        _ensure_observability()
+        infra = container.infra_container()
+        init_result = infra.init_resources()
+        if init_result is not None and inspect.isawaitable(init_result):
+            await init_result
         await anyio.lowlevel.checkpoint()
         yield
     finally:
-        shutdown_result = infra.shutdown_resources()
-        if shutdown_result is not None and inspect.isawaitable(
-            shutdown_result,
-        ):
-            await shutdown_result
-        container.unwire()
+        try:
+            if infra is not None:
+                shutdown_result = infra.shutdown_resources()
+                if shutdown_result is not None and inspect.isawaitable(
+                    shutdown_result,
+                ):
+                    await shutdown_result
+        finally:
+            container.unwire()
 
 
 def create_app() -> FastAPI:

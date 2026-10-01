@@ -12,6 +12,7 @@ TRACE_ID = "X-Request-ID"
 USER_ID = "X-User-ID"
 VALIDATION_UUID_OFF = None
 NO_PARAMS = None
+MAX_AGENT_TOOL_CALLS = 4
 
 
 # Metrics

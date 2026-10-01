@@ -15,6 +15,8 @@ from app.infrastructure.middleware.rate_limit import RateLimitStore
 from app.utils.configs import ProfilingConfig
 from app.utils.configs import RateLimitConfig
 from app.utils.configs import SecurityConfig
+from tests.schemas.unit.core.app_factory import LifespanFailureEntity
+from tests.schemas.unit.core.app_factory import LifespanFailureExpected
 from tests.schemas.unit.core.app_factory import MiddlewareListEntity
 from tests.schemas.unit.core.app_factory import MiddlewareListExpected
 
@@ -39,6 +41,10 @@ def _security_config() -> SecurityConfig:
         cors_allow_methods=["*"],
         cors_allow_headers=["*"],
     )
+
+
+async def _raise_async_init() -> None:
+    raise RuntimeError("async init failed")
 
 
 @pytest.mark.parametrize(
@@ -184,6 +190,85 @@ async def test_app_lifespan_init_and_shutdown_resources() -> None:
         )
         mock_infra.init_resources.assert_called_once()
         mock_infra.shutdown_resources.assert_called_once()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("entity", "expected"),
+    [
+        pytest.param(
+            LifespanFailureEntity(asynchronous=False),
+            LifespanFailureExpected(shutdown_calls=1, unwire_calls=1),
+            id="sync_init_failure",
+        ),
+        pytest.param(
+            LifespanFailureEntity(asynchronous=True),
+            LifespanFailureExpected(shutdown_calls=1, unwire_calls=1),
+            id="async_init_failure",
+        ),
+    ],
+)
+async def test_app_lifespan_cleans_up_after_init_failure(
+    entity: LifespanFailureEntity,
+    expected: LifespanFailureExpected,
+) -> None:
+    # Arrange
+    mock_app = MagicMock()
+    mock_container = MagicMock()
+    mock_infra = MagicMock()
+    if entity.asynchronous:
+        mock_infra.init_resources.return_value = _raise_async_init()
+    else:
+        mock_infra.init_resources.side_effect = RuntimeError(
+            "sync init failed",
+        )
+    mock_container.infra_container.return_value = mock_infra
+
+    # Act
+    with (
+        patch("app.core.app_factory._ensure_observability"),
+        pytest.raises(RuntimeError),
+    ):
+        async with app_lifespan(mock_app, mock_container):
+            pass
+
+    # Assert
+    assert (
+        mock_infra.shutdown_resources.call_count == expected.shutdown_calls
+    ), (
+        f"Expected {expected.shutdown_calls} shutdown calls, "
+        f"got {mock_infra.shutdown_resources.call_count}"
+    )
+    assert mock_container.unwire.call_count == expected.unwire_calls, (
+        f"Expected {expected.unwire_calls} unwire calls, "
+        f"got {mock_container.unwire.call_count}"
+    )
+
+
+@pytest.mark.anyio
+async def test_app_lifespan_unwires_when_shutdown_fails() -> None:
+    # Arrange
+    mock_app = MagicMock()
+    mock_container = MagicMock()
+    mock_infra = MagicMock()
+    mock_infra.init_resources.return_value = None
+    mock_infra.shutdown_resources.side_effect = RuntimeError(
+        "shutdown failed",
+    )
+    mock_container.infra_container.return_value = mock_infra
+
+    # Act
+    with (
+        patch("app.core.app_factory._ensure_observability"),
+        pytest.raises(RuntimeError),
+    ):
+        async with app_lifespan(mock_app, mock_container):
+            pass
+
+    # Assert
+    assert mock_container.unwire.call_count == 1, (
+        f"Expected one unwire call, got {mock_container.unwire.call_count}"
+    )
 
 
 def test_ensure_observability_tuple_execution() -> None:

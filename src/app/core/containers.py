@@ -5,7 +5,9 @@ from dependency_injector import providers
 from granian import Granian
 from granian.constants import Interfaces
 
+from app.application.services.agent_service import AgentService
 from app.application.services.search_service import SearchService
+from app.infrastructure.agents.resource import AgentRunnerResource
 from app.infrastructure.cache.memory import InMemoryCacheBackend
 from app.infrastructure.gateways.http_client import HttpClientResource
 from app.infrastructure.health.readiness import DefaultReadinessChecker
@@ -23,6 +25,7 @@ from app.infrastructure.persistence.repositories.search_repository import (
     SearchRepository,
 )
 from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
+from app.utils.agent_config import AgentConfig
 from app.utils.configs import CacheConfig
 from app.utils.configs import CircuitBreakerConfig
 from app.utils.configs import HttpClientConfig
@@ -152,6 +155,27 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         config=http_client_config,
     )
 
+    agent_config = providers.Singleton(
+        AgentConfig,
+        enabled=config.AGENT.ENABLED,
+        api_key=config.AGENT.API_KEY,
+        model=config.AGENT.MODEL,
+        base_url=config.AGENT.BASE_URL,
+        model_timeout_seconds=config.AGENT.MODEL_TIMEOUT_SECONDS,
+        run_timeout_seconds=config.AGENT.RUN_TIMEOUT_SECONDS,
+        max_steps=config.AGENT.MAX_STEPS.as_int(),
+        max_tokens=config.AGENT.MAX_TOKENS.as_int(),
+        tool_timeout_seconds=config.AGENT.TOOL_TIMEOUT_SECONDS,
+        geocoding_url=config.AGENT.GEOCODING_URL,
+        weather_url=config.AGENT.WEATHER_URL,
+        currency_url=config.AGENT.CURRENCY_URL,
+    )
+    agent_runner = providers.Resource(
+        AgentRunnerResource,
+        config=agent_config,
+        http_client=http_client,
+    )
+
     circuit_breaker_config = providers.Singleton(
         CircuitBreakerConfig,
         enabled=config.CIRCUIT_BREAKER.ENABLED,
@@ -199,6 +223,11 @@ class AppContainer(containers.DeclarativeContainer):
     search_service = providers.Singleton(
         SearchService,
         repository=search_repository,
+    )
+
+    agent_service = providers.Singleton(
+        AgentService,
+        runner=infra_container.agent_runner,
     )
 
     readiness_checker = providers.Singleton(DefaultReadinessChecker)
